@@ -43,7 +43,7 @@ struct _Efl_Canvas_Vg_Data
    void                      *engine_data;
    Efl_VG                    *root;
    Vg_Cache_Entry            *vg_entry;
-   Vg_User_Entry             *user_entry; // holds the user set vg tree
+   Vg_User_Entry             *user_entry; //holds the user set vg tree
    Eina_Rect                  fill;
    Eina_Rect                  viewbox;
    unsigned int               width, height;
