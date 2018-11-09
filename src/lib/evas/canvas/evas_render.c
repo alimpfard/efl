@@ -3197,7 +3197,7 @@ evas_render_updates_internal(Evas *eo_e,
 #endif
 
    evas_render_pre(eo_e, evas);
-
+ERR("---------------------------------------------------------------");
    eina_evlog("+render_calc", eo_e, 0.0, NULL);
    evas_call_smarts_calculate(eo_e);
    eina_evlog("-render_calc", eo_e, 0.0, NULL);
