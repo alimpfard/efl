@@ -224,9 +224,15 @@ _cached_root_get(Vg_Cache_Entry *vg_entry, unsigned int frame_num)
           {
              return vg_entry->root[1];
           }
+        //End frame
         else if (vg_entry->root[2] && (frame_num == (vfd->anim_data->frame_cnt - 1)))
           {
              return vg_entry->root[2];
+          }
+        //Current frame
+        else if (vg_entry->root[0] && (frame_num == (vfd->anim_data->frame_num)))
+          {
+             return vg_entry->root[0];
           }
      }
    //Case 2: Static
