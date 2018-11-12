@@ -98,9 +98,10 @@ vg_common_json_create_vg_node(Vg_File_Data *vfd)
           {
            case BrushSolid:
              {
-                int r = p->mColor.r * (p->mColor.a/255);
-                int g = p->mColor.g * (p->mColor.a/255);
-                int b = p->mColor.g * (p->mColor.a/255);
+                float pa = ((float)p->mColor.a) / 255;
+                int r = (int)(((float) p->mColor.r) * pa);
+                int g = (int)(((float) p->mColor.g) * pa);
+                int b = (int)(((float) p->mColor.g) * pa);
                 int a = p->mColor.a;
                 if (p->mStroke.enable)
                   evas_vg_shape_stroke_color_set(shape, r, g, b, a);
@@ -123,15 +124,19 @@ vg_common_json_create_vg_node(Vg_File_Data *vfd)
                           for (unsigned int i = 0; i < p->mGradient.stopCount; i++)
                             {
                                stops[i].offset = p->mGradient.stopPtr[i].pos;
-                               stops[i].r = p->mGradient.stopPtr[i].r;
-                               stops[i].g = p->mGradient.stopPtr[i].g;
-                               stops[i].b = p->mGradient.stopPtr[i].b;
+                               float pa = ((float)p->mGradient.stopPtr[i].a) / 255;
+                               stops[i].r = (int)(((float)p->mGradient.stopPtr[i].r) * pa);
+                               stops[i].g = (int)(((float)p->mGradient.stopPtr[i].g) * pa);
+                               stops[i].b = (int)(((float)p->mGradient.stopPtr[i].b) * pa);
                                stops[i].a = p->mGradient.stopPtr[i].a;
                             }
                           evas_vg_gradient_stop_set(grad, stops, p->mGradient.stopCount);
                           free(stops);
                        }
-                     evas_vg_shape_fill_set(shape, grad);
+                     if (p->mStroke.enable)
+                       evas_vg_shape_stroke_fill_set(shape, grad);
+                     else
+                       evas_vg_shape_fill_set(shape, grad);
                   }
                 else if (p->mGradient.type == GradientRadial)
                   {
