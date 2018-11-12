@@ -136,12 +136,27 @@ vg_common_json_create_vg_node(Vg_File_Data *vfd)
              break;
            case BrushGradient:
              {
+                Efl_VG* grad = NULL;
+
                 if (p->mGradient.type == GradientLinear)
                   {
-                     Efl_VG* grad = evas_vg_gradient_linear_add(root);
+                     grad = evas_vg_gradient_linear_add(root);
                      evas_vg_gradient_linear_start_set(grad, p->mGradient.start.x, p->mGradient.start.y);
                      evas_vg_gradient_linear_end_set(grad, p->mGradient.end.x, p->mGradient.end.y);
 
+                  }
+                else if (p->mGradient.type == GradientRadial)
+                  {
+                     grad = evas_vg_gradient_radial_add(root);
+                     evas_vg_gradient_radial_center_set(grad, p->mGradient.center.x, p->mGradient.center.y);
+                     evas_vg_gradient_radial_focal_set(grad, p->mGradient.focal.x, p->mGradient.focal.y);
+                     evas_vg_gradient_radial_radius_set(grad, p->mGradient.cradius);
+                  }
+                else
+                  ERR("No reserved gradient type = %d", p->mGradient.type);
+
+                if (grad)
+                  {
                      //Gradient Stop
                      Efl_Gfx_Gradient_Stop* stops = malloc(sizeof(Efl_Gfx_Gradient_Stop) * p->mGradient.stopCount);
                      if (stops)
@@ -163,13 +178,6 @@ vg_common_json_create_vg_node(Vg_File_Data *vfd)
                      else
                        evas_vg_shape_fill_set(shape, grad);
                   }
-                else if (p->mGradient.type == GradientRadial)
-                  {
-                     //TODO:
-                     ERR("Radial Gradient Type isn't implemented yet.");
-                  }
-                else
-                  ERR("No reserved gradient type = %d", p->mGradient.type);
              }
              break;
            default:
