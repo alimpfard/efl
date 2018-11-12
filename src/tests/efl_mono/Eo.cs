@@ -303,4 +303,16 @@ class TestEoMultipleChildClasses
     }
 }
 
+class TestCsharpProperties
+{
+    public static void test_csharp_properties()
+    {
+        var obj = new Dummy.TestObject();
+        var name = "My Name";
+        obj.Name = name;
+
+        Test.AssertEquals(name, obj.Name);
+    }
+}
+
 }

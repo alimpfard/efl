@@ -5,6 +5,8 @@
 #include "blacklist.hh"
 #include "name_helpers.hh"
 
+#include "Eina.hh"
+
 namespace eolian_mono {
 
 namespace helpers {
@@ -205,6 +207,70 @@ std::vector<attributes::function_def> get_all_implementable_methods(attributes::
     }
 
   return ret;
+}
+
+typedef std::pair<efl::eina::optional<attributes::function_def>, efl::eina::optional<attributes::function_def> > property_pair;
+/* typedef std::pair<attributes::function_def, attributes::function_def > property_pair; */
+
+std::vector<property_pair> get_implementable_properties(attributes::klass_def const& cls)
+{
+   std::map<std::string, property_pair> properties;
+   // FIXME What about the cases where a class only implements a getter but the base class implements a setter?
+   for (auto&& method : get_all_implementable_methods(cls))
+   {
+       attributes::function_type ftype = method.type;
+       bool is_getter;
+       switch (ftype)
+         {
+          case attributes::function_type::unresolved:
+          case attributes::function_type::method:
+          case attributes::function_type::function_pointer:
+            continue;
+          case attributes::function_type::prop_get:
+            is_getter = true;
+          case attributes::function_type::prop_set:
+            is_getter = false;
+          default:;
+         }
+       std::string name = method.name.substr(0, method.name.size()-4);
+
+       auto prop_it = properties.emplace(std::make_pair(name, property_pair()));
+
+       if (prop_it.second)
+         {
+            EINA_LOG_ERR("First inserting name  %s", name.c_str());
+         }
+       else
+         {
+            EINA_LOG_ERR("Already have inserted %s before", name.c_str());
+         }
+
+       if (is_getter)
+         {
+            (prop_it.first)->second.first= efl::eina::optional<attributes::function_def>(method);
+            /* (prop_it.first)->second.first = method; */
+         }
+       else
+         {
+            (prop_it.first)->second.second = efl::eina::optional<attributes::function_def>(method);
+            /* (prop_it.first)->second.second = method; */
+         }
+   }
+
+   std::vector<property_pair> ret;
+
+   std::transform(properties.cbegin(), properties.cend(), std::back_inserter(ret), [](std::pair<std::string, property_pair> const &prop) {
+           EINA_LOG_ERR("Transforming function %s", prop.first.c_str());
+           /* property_pair const& prop2 = prop.second; */
+           EINA_LOG_ERR("Has getter? %d", prop.second.first.is_engaged());
+           EINA_LOG_ERR("Has setter? %d", prop.second.second.is_engaged());
+           /* EINA_LOG_ERR("Has getter? %s", prop.second.first.name.c_str()); */
+           /* EINA_LOG_ERR("Has setter? %s", prop.second.second.name.c_str()); */
+
+           return prop.second;
+   });
+   return ret;
+   /* return std::vector<property_pair>(); */
 }
 
 

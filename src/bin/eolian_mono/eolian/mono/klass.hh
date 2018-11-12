@@ -249,6 +249,10 @@ struct klass
          if(!as_generator(*(async_function_definition)).generate(sink, implemented_methods, concrete_cxt))
            return false;
 
+         // Property wrappers
+         if (!as_generator(*(property_wrapper_definition)).generate(sink, cls.properties, concrete_cxt))
+            return false;
+
          if(!as_generator(*(event_argument_wrapper)).generate(sink, cls.events, context))
            return false;
 
@@ -309,6 +313,10 @@ struct klass
 
          // Async wrappers
          if(!as_generator(*(async_function_definition(true))).generate(sink, implemented_methods, inherit_cxt))
+           return false;
+
+         // Property wrappers
+         if (!as_generator(*(property_wrapper_definition)).generate(sink, cls.properties, inherit_cxt))
            return false;
 
          if(!as_generator(*(event_argument_wrapper)).generate(sink, cls.events, context))
