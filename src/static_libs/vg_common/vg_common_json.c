@@ -101,7 +101,7 @@ vg_common_json_create_vg_node(Vg_File_Data *vfd)
                 float pa = ((float)p->mColor.a) / 255;
                 int r = (int)(((float) p->mColor.r) * pa);
                 int g = (int)(((float) p->mColor.g) * pa);
-                int b = (int)(((float) p->mColor.g) * pa);
+                int b = (int)(((float) p->mColor.b) * pa);
                 int a = p->mColor.a;
                 if (p->mStroke.enable)
                   evas_vg_shape_stroke_color_set(shape, r, g, b, a);
