@@ -110,14 +110,9 @@ vg_common_json_create_vg_node(Vg_File_Data *vfd)
              break;
            case BrushGradient:
              {
-                Eina_Rect bound;
-                efl_gfx_path_bounds_get(shape, &bound);
-                ERR("bound = %d %d %d %d", bound.x, bound.y, bound.w, bound.h);
-
                 if (p->mGradient.type == GradientLinear)
                   {
                      Efl_VG* grad = evas_vg_gradient_linear_add(root);
-
                      evas_vg_gradient_linear_start_set(grad, p->mGradient.start.x, p->mGradient.start.y);
                      evas_vg_gradient_linear_end_set(grad, p->mGradient.end.x, p->mGradient.end.y);
 
@@ -132,7 +127,6 @@ vg_common_json_create_vg_node(Vg_File_Data *vfd)
                                stops[i].g = p->mGradient.stopPtr[i].g;
                                stops[i].b = p->mGradient.stopPtr[i].b;
                                stops[i].a = p->mGradient.stopPtr[i].a;
-                               ERR("\t Stop[%d] offset(%f), color(%d %d %d %d) ", i, stops[i].offset, stops[i].r, stops[i].g, stops[i].b, stops[i].a);
                             }
                           evas_vg_gradient_stop_set(grad, stops, p->mGradient.stopCount);
                           free(stops);
