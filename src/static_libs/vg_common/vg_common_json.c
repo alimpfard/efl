@@ -99,6 +99,22 @@ vg_common_json_create_vg_node(Vg_File_Data *vfd)
                 default: join = EFL_GFX_JOIN_MITER; break;
                }
              evas_vg_shape_stroke_join_set(shape, join);
+
+             //Stroke Dash
+             if (p->mStroke.dashArraySize > 0)
+               {
+                  int size = (p->mStroke.dashArraySize / 2);
+                  Efl_Gfx_Dash *dash = malloc(sizeof(Efl_Gfx_Dash) * size);
+                  if (dash)
+                    {
+                       for (int i = 0; i < size; i+=2)
+                         {
+                            dash[i].length = p->mStroke.dashArray[i];
+                            dash[i].gap = p->mStroke.dashArray[i + 1];
+                         }
+                       evas_vg_shape_stroke_dash_set(shape, dash, size);
+                    }
+               }
           }
 
         //2: Fill Method
