@@ -89,11 +89,9 @@ vg_common_json_create_vg_node(Vg_File_Data *vfd)
                }
              evas_vg_shape_stroke_cap_set(shape, cap);
 
-             //Fill
-
           }
 
-        //2: fill
+        //2: Fill Method
         switch (p->mBrushType)
           {
            case BrushSolid:
@@ -150,6 +148,12 @@ vg_common_json_create_vg_node(Vg_File_Data *vfd)
            default:
               ERR("No reserved brush type = %d", p->mBrushType);
           }
+
+        //3: Fill Rule
+        if (p->mFillRule == FillEvenOdd)
+          efl_gfx_shape_fill_rule_set(shape, EFL_GFX_FILL_RULE_ODD_EVEN);
+        else if (p->mFillRule == FillWinding)
+          efl_gfx_shape_fill_rule_set(shape, EFL_GFX_FILL_RULE_WINDING);
      }
 #else
    return EINA_FALSE;
