@@ -89,6 +89,16 @@ vg_common_json_create_vg_node(Vg_File_Data *vfd)
                }
              evas_vg_shape_stroke_cap_set(shape, cap);
 
+             //Stroke Join
+             Efl_Gfx_Join join;
+             switch (p->mStroke.join)
+               {
+                case JoinMiter: join = EFL_GFX_JOIN_MITER; break;
+                case JoinBevel: join = EFL_GFX_JOIN_BEVEL; break;
+                case JoinRound: join = EFL_GFX_JOIN_ROUND; break;
+                default: join = EFL_GFX_JOIN_MITER; break;
+               }
+             evas_vg_shape_stroke_join_set(shape, join);
           }
 
         //2: Fill Method
