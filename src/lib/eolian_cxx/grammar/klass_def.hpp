@@ -627,6 +627,7 @@ struct function_def
   {
     Eolian_Type const* r_type = ::eolian_function_return_type_get(function, type);
     name = ::eolian_function_name_get(function);
+    return_documentation = eolian_function_return_documentation_get(function, type);
     if(r_type)
       return_type.set(r_type, unit, EOLIAN_C_TYPE_RETURN);
      if(type == EOLIAN_METHOD || type == EOLIAN_FUNCTION_POINTER)
@@ -660,6 +661,9 @@ struct function_def
          if(!r_type && type == EOLIAN_PROP_GET && values.size() == 1)
            {
              return_type = values[0].type;
+             if (return_documentation.summary.empty())
+               return_documentation = values[0].documentation;
+
            }
          else if(type == EOLIAN_PROP_GET)
            {
@@ -695,8 +699,6 @@ struct function_def
      is_beta = eolian_function_is_beta(function);
      is_protected = eolian_function_scope_get(function, type) == EOLIAN_SCOPE_PROTECTED;
      is_static = eolian_function_is_class(function);
-
-     return_documentation = eolian_function_return_documentation_get(function, type);
 
      Eolian_Implement const* implement = eolian_function_implement_get(function);
      if (!implement)

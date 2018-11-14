@@ -8,6 +8,7 @@
 #include "name_helpers.hh"
 
 #include <Eina.h>
+#include <regex>
 
 namespace eolian_mono {
 
@@ -19,6 +20,17 @@ struct documentation_generator
    documentation_generator(int scope_size)
        : scope_size(scope_size) {}
 
+   // Turns EO documentation syntax into C# triple-slash XML comment syntax
+   static std::string syntax_conversion(std::string text)
+   {
+      std::string new_text = text;
+      // $name to <c>name</c>
+      new_text = std::regex_replace(new_text, std::regex("\\$([A-Za-z_]*)"), "<c>$1</c>");
+      // @name to <see cref="name">
+      new_text = std::regex_replace(new_text, std::regex("@([A-Za-z._]*[A-Za-z_])"), "<see cref=\"$1\"/>");
+      return new_text;
+   }
+
    /// Tag generator helpers
    template<typename OutputIterator, typename Context>
    bool generate_tag(OutputIterator sink, std::string const& tag, std::string const &text, Context const& context) const
@@ -26,7 +38,11 @@ struct documentation_generator
       if (text.empty())
         return true;
 
-      return as_generator( scope_tab(scope_size) << "///<" << tag << ">" << html_escaped_string << "</" << tag << ">\n").generate(sink, text, context);
+      std::string new_text;
+      if (!as_generator(html_escaped_string).generate(std::back_inserter(new_text), text, context))
+        return false;
+      new_text = syntax_conversion( new_text );
+      return as_generator( scope_tab(scope_size) << "///<" << tag << ">" << new_text << "</" << tag << ">\n").generate(sink, attributes::unused, context);
    }
 
    template<typename OutputIterator, typename Context>
@@ -36,22 +52,20 @@ struct documentation_generator
    }
 
    template<typename OutputIterator, typename Context>
-   bool generate_tag_para(OutputIterator sink, std::string const& text, Context const& context) const
-   {
-      return generate_tag(sink, "para", text, context);
-   }
-
-   template<typename OutputIterator, typename Context>
    bool generate_tag_param(OutputIterator sink, std::string const& name, std::string const& text, Context const& context) const
    {
+      std::string new_text;
+      if (!as_generator(html_escaped_string).generate(std::back_inserter(new_text), text, context))
+        return false;
+      new_text = syntax_conversion( new_text );
       return as_generator( scope_tab(scope_size) << "///<param name=\"" << name << "\">"
-                    << html_escaped_string << "</param>\n").generate(sink, text, context);
+                    << new_text << "</param>\n").generate(sink, attributes::unused, context);
    }
 
    template<typename OutputIterator, typename Context>
    bool generate_tag_return(OutputIterator sink, std::string const& text, Context const& context) const
    {
-      return generate_tag(sink, "return", text, context);
+      return generate_tag(sink, "returns", text, context);
    }
 
    // Actual exported generators
@@ -122,45 +136,20 @@ struct documentation_generator
    template<typename OutputIterator, typename Context>
    bool generate(OutputIterator sink, attributes::documentation_def const& doc, Context const& context) const
    {
-      if (!generate_preamble(sink, doc, context))
-        return false;
-      if (!generate_body(sink, doc, context))
-        return false;
-      if (!generate_epilogue(sink, doc, context))
-        return false;
+      std::string tabs;
+      as_generator( scope_tab(scope_size) << "/// " ).generate (std::back_inserter(tabs), attributes::unused, context);
 
-      return true;
-   }
+      std::string summary = doc.summary + "\n" + tabs + "\n";
 
-   template<typename OutputIterator, typename Context>
-   bool generate_preamble(OutputIterator sink, attributes::documentation_def const& doc, Context const context) const
-   {
-      return generate_tag_summary(sink, doc.summary, context);
-   }
-
-
-   template<typename OutputIterator, typename Context>
-   bool generate_body(OutputIterator sink, attributes::documentation_def const& doc, Context const context) const
-   {
       for (auto&& para : doc.desc_paragraphs)
         {
-           if (!generate_tag_para(sink, para, context))
-             return false;
+           summary += tabs + para + "\n" + tabs + "\n";
         }
+      if (!doc.since.empty())
+        summary += tabs + doc.since + "\n";
 
-      return true;
-   }
-
-   template<typename OutputIterator, typename Context>
-   bool generate_epilogue(OutputIterator sink, attributes::documentation_def const& doc, Context const context) const
-   {
-      if (doc.since.empty())
-        return true;
-
-      if (!generate_tag_para(sink, doc.since, context))
-        return false;
-
-      return true;
+      summary += tabs;
+      return generate_tag_summary(sink, summary, context);
    }
 };
 
