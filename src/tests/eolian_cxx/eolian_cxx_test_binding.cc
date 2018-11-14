@@ -4,12 +4,17 @@
 
 #include <Ecore.h>
 
+#include <map>
+
 #include <generic.eo.hh>
 #include <generic.eo.impl.hh>
 #include <name1_name2_type_generation.eo.hh>
 #include <name1_name2_type_generation.eo.impl.hh>
 
 #include "eolian_cxx_suite.h"
+
+#include <Eolian_Cxx.hh>
+#include "grammar/klass_def.hpp"
 
 EFL_START_TEST(eolian_cxx_test_binding_constructor_only_required)
 {
@@ -223,6 +228,47 @@ EFL_START_TEST(eolian_cxx_test_type_callback)
 }
 EFL_END_TEST
 
+using efl::eolian::grammar::attributes::klass_def;
+using efl::eolian::grammar::attributes::function_def;
+using efl::eolian::grammar::attributes::property_def;
+using efl::eolian::grammar::attributes::type_def;
+
+// FIXME Unify this definition some so we can share it with documentation tests.
+static
+klass_def init_test_data(std::string const target_file, std::string const target_klass, efl::eolian::eolian_state const& state)
+{
+   ck_assert(::eolian_state_directory_add(state.value, TESTS_SRC_DIR));
+   ck_assert(::eolian_state_directory_add(state.value, EO_SRC_DIR));
+   ck_assert(::eolian_state_all_eot_files_parse(state.value));
+   std::string filename = TESTS_SRC_DIR;
+   filename += "/" + target_file;
+   ck_assert(::eolian_state_file_parse(state.value, filename.c_str()));
+
+   const Eolian_Class *c_klass = ::eolian_state_class_by_name_get(state.value, target_klass.c_str());
+   ck_assert_ptr_ne(c_klass, NULL);
+
+   klass_def klass(c_klass, state.as_unit());
+   return klass;
+}
+
+EFL_START_TEST(eolian_cxx_test_properties)
+{
+  efl::eolian::eolian_init eolian_init;
+  efl::eolian::eolian_state eolian_state;
+
+  klass_def cls = init_test_data("properties.eo", "Properties", eolian_state);
+
+  // FIXME Currently parsing only properties with both get/set values.
+  auto props = cls.properties;
+  ck_assert_int_eq(2, cls.properties.size());
+
+  auto property = props[0];
+  ck_assert("prop_simple" == props[0].name);
+  ck_assert("prop_with_key" == props[1].name);
+
+}
+EFL_END_TEST
+
 void
 eolian_cxx_test_binding(TCase* tc)
 {
@@ -233,4 +279,6 @@ eolian_cxx_test_binding(TCase* tc)
    tcase_add_test(tc, eolian_cxx_test_type_generation_return);
    tcase_add_test(tc, eolian_cxx_test_type_generation_optional);
    tcase_add_test(tc, eolian_cxx_test_type_callback);
+   /* tcase_add_test(tc, eolian_cxx_test_attributes_handling); */
+   tcase_add_test(tc, eolian_cxx_test_properties);
 }

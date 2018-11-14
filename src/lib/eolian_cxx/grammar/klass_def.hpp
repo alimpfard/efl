@@ -175,7 +175,7 @@ struct documentation_def
    std::string since;
    std::vector<std::string> desc_paragraphs;
 
-   documentation_def() {}
+   documentation_def() = default;
    documentation_def(std::string summary, std::string description, std::string since)
      : summary(summary), description(description), since(since)
    {}
@@ -296,7 +296,7 @@ struct type_def
    bool has_own;
    bool is_ptr;
 
-   type_def() {}
+   type_def() = default;
    type_def(variant_type original_type, std::string c_type, bool has_own)
      : original_type(original_type), c_type(c_type), has_own(has_own) {}
 
@@ -798,6 +798,75 @@ struct tuple_element<2ul, function_def>
    static type const& get(function_def const& f) { return f.parameters; }
 };
 
+struct property_def
+{
+  klass_name klass;
+  std::string name;
+
+  std::vector<parameter_def> get_keys;
+  std::vector<parameter_def> get_values;
+  std::vector<parameter_def> set_keys;
+  std::vector<parameter_def> set_values;
+
+  efl::eina::optional<function_def> getter;
+  efl::eina::optional<function_def> setter;
+
+  friend inline bool operator==(property_def const& lhs, property_def const& rhs)
+  {
+    return lhs.klass == rhs.klass
+      && lhs.name == rhs.name
+      && lhs.get_keys == rhs.get_keys
+      && lhs.get_values == rhs.get_values
+      && lhs.set_keys == rhs.set_keys
+      && lhs.set_values == rhs.set_values
+      && lhs.getter == rhs.getter
+      && lhs.setter == rhs.setter;
+  }
+
+  friend inline bool operator!=(property_def const& lhs, property_def const& rhs)
+  {
+    return !(lhs == rhs);
+  }
+
+  property_def() = default;
+  property_def(Eolian_Function const *function, efl::eina::optional<function_def> getter
+              , efl::eina::optional<function_def> setter, Eolian_Unit const* unit)
+              : getter(getter), setter(setter)
+  {
+     name = ::eolian_function_name_get(function);
+
+     const Eolian_Class *eolian_klass = eolian_function_class_get(function);
+     klass = klass_name(eolian_klass,
+         {attributes::qualifier_info::is_none, std::string()});
+
+     get_keys_and_values(function, EOLIAN_PROP_GET, get_keys, get_values, unit);
+     get_keys_and_values(function, EOLIAN_PROP_SET, set_keys, set_values, unit);
+
+  }
+
+private:
+  void get_keys_and_values(Eolian_Function const* function
+                          , Eolian_Function_Type type
+                          , std::vector<parameter_def>& keys
+                          , std::vector<parameter_def>& values
+                          , Eolian_Unit const* unit)
+  {
+     for(efl::eina::iterator<Eolian_Function_Parameter> param_iterator
+           ( ::eolian_property_keys_get(function, type))
+           , param_last; param_iterator != param_last; ++param_iterator)
+       {
+          keys.push_back({&*param_iterator, unit});
+       }
+     for(efl::eina::iterator<Eolian_Function_Parameter> param_iterator
+           ( ::eolian_property_values_get(function, type))
+           , param_last; param_iterator != param_last; ++param_iterator)
+       {
+          values.push_back({&*param_iterator, unit});
+       }
+  }
+};
+
+
 // template <int N>
 // struct tuple_element<N, function_def const> : tuple_element<N, function_def> {};
 // template <int N>
@@ -938,6 +1007,7 @@ struct klass_def
   documentation_def documentation;
   std::vector<std::string> namespaces;
   std::vector<function_def> functions;
+  std::vector<property_def> properties;
   std::set<klass_name, compare_klass_name_by_name> inherits;
   class_type type;
   std::vector<event_def> events;
@@ -952,6 +1022,7 @@ struct klass_def
       && lhs.filename == lhs.filename
       && lhs.namespaces == rhs.namespaces
       && lhs.functions == rhs.functions
+      && lhs.properties == rhs.properties
       && lhs.inherits == rhs.inherits
       && lhs.type == rhs.type
       && lhs.events == rhs.events
@@ -973,23 +1044,25 @@ struct klass_def
             , documentation_def documentation
             , std::vector<std::string> namespaces
             , std::vector<function_def> functions
+            , std::vector<property_def> properties
             , std::set<klass_name, compare_klass_name_by_name> inherits
             , class_type type
             , std::set<klass_name, compare_klass_name_by_name> immediate_inherits)
     : eolian_name(eolian_name), cxx_name(cxx_name), filename(filename)
     , documentation(documentation)
     , namespaces(namespaces)
-    , functions(functions), inherits(inherits), type(type)
+    , functions(functions), properties(properties), inherits(inherits), type(type)
     , immediate_inherits(immediate_inherits)
   {}
   klass_def(std::string _eolian_name, std::string _cxx_name
             , std::vector<std::string> _namespaces
             , std::vector<function_def> _functions
+            , std::vector<property_def> _properties
             , std::set<klass_name, compare_klass_name_by_name> _inherits
             , class_type _type, Eolian_Unit const* unit)
     : eolian_name(_eolian_name), cxx_name(_cxx_name)
     , namespaces(_namespaces)
-    , functions(_functions), inherits(_inherits), type(_type), unit(unit)
+    , functions(_functions), properties(_properties), inherits(_inherits), type(_type), unit(unit)
   {}
   klass_def(Eolian_Class const* klass, Eolian_Unit const* unit) : unit(unit)
   {
@@ -1007,16 +1080,27 @@ struct klass_def
          Eolian_Function_Type func_type = ::eolian_function_type_get(function);
          if(func_type == EOLIAN_PROPERTY)
            {
+           efl::eina::optional<function_def> getter(nullptr);
+           efl::eina::optional<function_def> setter(nullptr);
              try {
                 if(! ::eolian_function_is_legacy_only(function, EOLIAN_PROP_GET)
                    && ::eolian_function_scope_get(function, EOLIAN_PROP_GET) != EOLIAN_SCOPE_PRIVATE)
-                  functions.push_back({function, EOLIAN_PROP_GET, NULL,  unit});
+                  {
+                     function_def f(function, EOLIAN_PROP_GET, NULL, unit);
+                     functions.push_back(f);
+                     getter = efl::eina::optional<function_def>(f);
+                  }
              } catch(std::exception const&) {}
              try {
                 if(! ::eolian_function_is_legacy_only(function, EOLIAN_PROP_SET)
                    && ::eolian_function_scope_get(function, EOLIAN_PROP_SET) != EOLIAN_SCOPE_PRIVATE)
-                  functions.push_back({function, EOLIAN_PROP_SET, NULL, unit});
+                  {
+                     function_def f(function, EOLIAN_PROP_SET, NULL, unit);
+                     functions.push_back(f);
+                     setter = efl::eina::optional<function_def>(f);
+                  }
              } catch(std::exception const&) {}
+             properties.push_back({function, getter, setter, unit});
            }
          else
            try {
@@ -1130,7 +1214,7 @@ struct value_def
   std::string literal;
   type_def type;
 
-  value_def() {}
+  value_def() = default;
   value_def(Eolian_Value value_obj)
   {
     type.set(value_obj.type);
