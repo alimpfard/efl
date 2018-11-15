@@ -524,6 +524,13 @@ _elm_animation_view_duration_time_get(const Eo *obj EINA_UNUSED, Elm_Animation_V
    return pd->frame_duration;
 }
 
+EOLIAN static Eina_Size2D
+_elm_animation_view_default_size_get(const Eo *obj EINA_UNUSED,
+                                     Elm_Animation_View_Data *pd EINA_UNUSED)
+{
+   return efl_canvas_vg_default_size_get(pd->vg);
+}
+
 EAPI Elm_Animation_View*
 elm_animation_view_add(Evas_Object *parent)
 {
