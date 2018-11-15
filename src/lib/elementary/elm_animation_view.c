@@ -39,6 +39,30 @@ static const Evas_Smart_Cb_Description _smart_callbacks[] = {
 };
 
 static void
+_sizing_eval(void *data)
+{
+   Elm_Animation_View_Data *pd = data;
+   if (!pd->file) return;
+
+   double hw,hh;
+   efl_gfx_size_hint_weight_get(pd->obj, &hw, &hh);
+
+   Eina_Size2D size = efl_canvas_vg_default_size_get(pd->vg);
+
+   Eina_Size2D min = {-1, -1};
+   if (hw == 0) min.w = size.w;
+   if (hh == 0) min.h = size.h;
+
+   efl_gfx_size_hint_min_set(pd->obj, min);
+}
+
+static void
+_size_hint_event_cb(void *data, const Efl_Event *event EINA_UNUSED)
+{
+   _sizing_eval(data);
+}
+
+static void
 _transit_go_facade(Elm_Animation_View_Data *pd)
 {
    pd->repeat_times = 0;
@@ -170,6 +194,7 @@ _elm_animation_view_efl_canvas_group_group_add(Eo *obj, Elm_Animation_View_Data 
    // Create vg to render vector animation
    Eo *vg = evas_object_vg_add(evas_object_evas_get(obj));
    elm_widget_resize_object_set(obj, vg);
+   efl_event_callback_add(obj, EFL_GFX_ENTITY_EVENT_CHANGE_SIZE_HINTS, _size_hint_event_cb, priv);
 
    priv->vg = vg;
    priv->speed = 1;
@@ -245,6 +270,8 @@ _elm_animation_view_efl_file_file_set(Eo *obj EINA_UNUSED, Elm_Animation_View_Da
    pd->file = eina_stringshare_add(file);
    pd->keyframe = 0;
 
+   _sizing_eval(pd);
+
    if (!pd->file)
      {
         pd->state = ELM_ANIMATION_VIEW_STATE_NOT_READY;
@@ -293,6 +320,8 @@ _elm_animation_view_efl_gfx_entity_size_set(Eo *obj,
      return;
 
    efl_gfx_entity_size_set(efl_super(obj, MY_CLASS), size);
+
+   _sizing_eval(pd);
 
    _auto_play(pd, _visible_check(obj));
 }
