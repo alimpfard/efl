@@ -1543,6 +1543,7 @@ struct _Vg_File_Data
    Eina_Rectangle     view_box;
    Vg_File_Anim_Data *anim_data;           //only when animation supported.
    int ref;
+   int w, h;                               //default size
 
    void           *loader_data;            //loader specific local data
 

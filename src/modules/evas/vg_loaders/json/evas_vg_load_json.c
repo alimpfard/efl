@@ -73,6 +73,12 @@ evas_vg_load_file_open_json(Eina_File *file,
         vfd->anim_data->frame_cnt = frame_cnt;
      }
 
+   //default size
+   size_t w, h;
+   lottie_animation_get_size(lot_anim, &w, &h);
+   vfd->w = (int) w;
+   vfd->h = (int) h;
+
    vfd->loader_data = (void *) lot_anim;
 
    return vfd;

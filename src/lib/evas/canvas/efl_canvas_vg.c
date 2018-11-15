@@ -211,7 +211,6 @@ _efl_canvas_vg_fill_mode_get(const Eo *obj EINA_UNUSED, Efl_Canvas_Vg_Data *pd)
    return pd->fill_mode;
 }
 
-//FIXME: logic is insane.... remove viewbox API.
 EOLIAN static void
 _efl_canvas_vg_viewbox_set(Eo *obj, Efl_Canvas_Vg_Data *pd, Eina_Rect viewbox)
 {
@@ -980,6 +979,13 @@ _efl_canvas_vg_efl_gfx_image_animation_controller_animated_frame_get(const Eo *e
                                                                      Efl_Canvas_Vg_Data *pd EINA_UNUSED)
 {
    return pd->frame_index;
+}
+
+EOLIAN static Eina_Size2D
+_efl_canvas_vg_default_size_get(const Eo *eo_obj EINA_UNUSED,
+                                Efl_Canvas_Vg_Data *pd EINA_UNUSED)
+{
+   return evas_cache_vg_entry_default_size_get(pd->vg_entry);
 }
 
 /* the actual api call to add a vector graphic object */

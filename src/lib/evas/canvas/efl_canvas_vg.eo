@@ -68,6 +68,15 @@ class Efl.Canvas.Vg (Efl.Canvas.Object, Efl.File, Efl.Gfx.Image_Animation_Contro
             root: Efl.Canvas.Vg.Node; [[Root node of the VG canvas.]]
          }
       }
+      @property default_size {
+         get {
+            [[Get the default vector size that specified from vector resource.
+              @since 1.22]]
+         }
+         values {
+            size: Eina.Size2D;
+         }
+      }
    }
    implements {
       Efl.Object.constructor;

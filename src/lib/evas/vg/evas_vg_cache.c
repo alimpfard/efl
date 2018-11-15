@@ -480,6 +480,13 @@ evas_cache_vg_entry_del(Vg_Cache_Entry *vg_entry)
      ERR("Failed to delete vg_entry = (%p) from hash", vg_entry);
 }
 
+Eina_Size2D
+evas_cache_vg_entry_default_size_get(const Vg_Cache_Entry *vg_entry)
+{
+   if (!vg_entry) return EINA_SIZE2D(0, 0);
+   return EINA_SIZE2D(vg_entry->vfd->w, vg_entry->vfd->h);
+}
+
 Eina_Bool
 evas_cache_vg_entry_file_save(Vg_Cache_Entry *vg_entry, const char *file, const char *key,
                               const char *flags)
