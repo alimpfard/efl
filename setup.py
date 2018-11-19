@@ -28,3 +28,4 @@ cmd = "meson build "+default[platform.system().lower()]+" "+(''.join(passed_args
 print("Executing build command: "+cmd)
 
 os.system(cmd)
+
