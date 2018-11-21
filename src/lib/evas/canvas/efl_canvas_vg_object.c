@@ -3,7 +3,7 @@
 
 #include "evas_vg_private.h"
 
-#define MY_CLASS EFL_CANVAS_VG_CLASS
+#define MY_CLASS EFL_CANVAS_VG_OBJECT_CLASS
 
 /* private magic number for vector objects */
 static const char o_type[] = "vectors";
@@ -11,38 +11,38 @@ static const char o_type[] = "vectors";
 const char *o_vg_type = o_type;
 
 
-static void _efl_canvas_vg_render(Evas_Object *eo_obj,
-                                  Evas_Object_Protected_Data *obj,
-                                  void *type_private_data,
-                                  void *engine, void *output, void *context, void *surface,
-                                  int x, int y, Eina_Bool do_async);
-static void _efl_canvas_vg_render_pre(Evas_Object *eo_obj,
-                                      Evas_Object_Protected_Data *obj,
-                                      void *type_private_data);
-static void _efl_canvas_vg_render_post(Evas_Object *eo_obj,
-                                       Evas_Object_Protected_Data *obj,
-                                       void *type_private_data);
-static void *_efl_canvas_vg_engine_data_get(Evas_Object *eo_obj);
-static int _efl_canvas_vg_is_opaque(Evas_Object *eo_obj,
-                                    Evas_Object_Protected_Data *obj,
-                                    void *type_private_data);
-static int _efl_canvas_vg_was_opaque(Evas_Object *eo_obj,
-                                     Evas_Object_Protected_Data *obj,
-                                     void *type_private_data);
+static void _efl_canvas_vg_object_render(Evas_Object *eo_obj,
+                                         Evas_Object_Protected_Data *obj,
+                                         void *type_private_data,
+                                         void *engine, void *output, void *context, void *surface,
+                                         int x, int y, Eina_Bool do_async);
+static void _efl_canvas_vg_object_render_pre(Evas_Object *eo_obj,
+                                             Evas_Object_Protected_Data *obj,
+                                             void *type_private_data);
+static void _efl_canvas_vg_object_render_post(Evas_Object *eo_obj,
+                                              Evas_Object_Protected_Data *obj,
+                                              void *type_private_data);
+static void *_efl_canvas_vg_object_engine_data_get(Evas_Object *eo_obj);
+static int _efl_canvas_vg_object_is_opaque(Evas_Object *eo_obj,
+                                           Evas_Object_Protected_Data *obj,
+                                           void *type_private_data);
+static int _efl_canvas_vg_object_was_opaque(Evas_Object *eo_obj,
+                                            Evas_Object_Protected_Data *obj,
+                                            void *type_private_data);
 
 static const Evas_Object_Func object_func =
 {
    /* methods (compulsory) */
    NULL,
-   _efl_canvas_vg_render,
-   _efl_canvas_vg_render_pre,
-   _efl_canvas_vg_render_post,
-   _efl_canvas_vg_engine_data_get,
+   _efl_canvas_vg_object_render,
+   _efl_canvas_vg_object_render_pre,
+   _efl_canvas_vg_object_render_post,
+   _efl_canvas_vg_object_engine_data_get,
    /* these are optional. NULL = nothing */
    NULL,
    NULL,
-   _efl_canvas_vg_is_opaque,
-   _efl_canvas_vg_was_opaque,
+   _efl_canvas_vg_object_is_opaque,
+   _efl_canvas_vg_object_was_opaque,
    NULL,
    NULL,
    NULL,
@@ -56,7 +56,7 @@ static void
 _evas_vg_tree_changed(void *data, const Efl_Event *event EINA_UNUSED)
 {
    Evas_Object_Protected_Data *obj = data;
-   Efl_Canvas_Vg_Data *pd = efl_data_scope_get(obj->object, MY_CLASS);
+   Efl_Canvas_Vg_Object_Data *pd = efl_data_scope_get(obj->object, MY_CLASS);
 
    if (pd->changed) return;
 
@@ -66,7 +66,7 @@ _evas_vg_tree_changed(void *data, const Efl_Event *event EINA_UNUSED)
 }
 
 static void
-_update_vgtree_viewport(Eo *obj, Efl_Canvas_Vg_Data *pd)
+_update_vgtree_viewport(Eo *obj, Efl_Canvas_Vg_Object_Data *pd)
 {
    double vb_w, vb_h, vp_w, vp_h, scale_w, scale_h, scale;
    Eina_Size2D sz = efl_gfx_entity_size_get(obj);
@@ -107,7 +107,7 @@ _update_vgtree_viewport(Eo *obj, Efl_Canvas_Vg_Data *pd)
 static void
 _evas_vg_resize(void *data, const Efl_Event *ev)
 {
-   Efl_Canvas_Vg_Data *pd = data;
+   Efl_Canvas_Vg_Object_Data *pd = data;
 
    if (eina_rectangle_is_empty(&pd->viewbox.rect))
      return;
@@ -115,7 +115,7 @@ _evas_vg_resize(void *data, const Efl_Event *ev)
 }
 
 EOLIAN static Efl_VG *
-_efl_canvas_vg_root_node_get(const Eo *obj, Efl_Canvas_Vg_Data *pd)
+_efl_canvas_vg_object_root_node_get(const Eo *obj, Efl_Canvas_Vg_Object_Data *pd)
 {
    Efl_VG *root;
 
@@ -140,7 +140,7 @@ _efl_canvas_vg_root_node_get(const Eo *obj, Efl_Canvas_Vg_Data *pd)
 }
 
 EOLIAN static void
-_efl_canvas_vg_root_node_set(Eo *obj, Efl_Canvas_Vg_Data *pd, Efl_VG *root_node)
+_efl_canvas_vg_object_root_node_set(Eo *obj, Efl_Canvas_Vg_Object_Data *pd, Efl_VG *root_node)
 {
    // if the same root is already set
    if (pd->user_entry && pd->user_entry->root == root_node)
@@ -193,19 +193,19 @@ _efl_canvas_vg_root_node_set(Eo *obj, Efl_Canvas_Vg_Data *pd, Efl_VG *root_node)
 }
 
 EOLIAN static void
-_efl_canvas_vg_fill_mode_set(Eo *obj EINA_UNUSED, Efl_Canvas_Vg_Data *pd, Efl_Canvas_Vg_Fill_Mode fill_mode)
+_efl_canvas_vg_object_fill_mode_set(Eo *obj EINA_UNUSED, Efl_Canvas_Vg_Object_Data *pd, Efl_Canvas_Vg_Fill_Mode fill_mode)
 {
    pd->fill_mode = fill_mode;
 }
 
 EOLIAN static Efl_Canvas_Vg_Fill_Mode
-_efl_canvas_vg_fill_mode_get(const Eo *obj EINA_UNUSED, Efl_Canvas_Vg_Data *pd)
+_efl_canvas_vg_object_fill_mode_get(const Eo *obj EINA_UNUSED, Efl_Canvas_Vg_Object_Data *pd)
 {
    return pd->fill_mode;
 }
 
 EOLIAN static void
-_efl_canvas_vg_viewbox_set(Eo *obj, Efl_Canvas_Vg_Data *pd, Eina_Rect viewbox)
+_efl_canvas_vg_object_viewbox_set(Eo *obj, Efl_Canvas_Vg_Object_Data *pd, Eina_Rect viewbox)
 {
    // viewbox should be a valid rectangle
    if (eina_rectangle_is_empty(&viewbox.rect))
@@ -232,13 +232,13 @@ _efl_canvas_vg_viewbox_set(Eo *obj, Efl_Canvas_Vg_Data *pd, Eina_Rect viewbox)
 }
 
 EOLIAN static Eina_Rect
-_efl_canvas_vg_viewbox_get(const Eo *obj EINA_UNUSED, Efl_Canvas_Vg_Data *pd)
+_efl_canvas_vg_object_viewbox_get(const Eo *obj EINA_UNUSED, Efl_Canvas_Vg_Object_Data *pd)
 {
    return pd->viewbox;
 }
 
 EOLIAN static void
-_efl_canvas_vg_viewbox_align_set(Eo *obj EINA_UNUSED, Efl_Canvas_Vg_Data *pd, double align_x, double align_y)
+_efl_canvas_vg_object_viewbox_align_set(Eo *obj EINA_UNUSED, Efl_Canvas_Vg_Object_Data *pd, double align_x, double align_y)
 {
    align_x = align_x < 0 ? 0 : align_x;
    align_x = align_x > 1 ? 1 : align_x;
@@ -251,14 +251,14 @@ _efl_canvas_vg_viewbox_align_set(Eo *obj EINA_UNUSED, Efl_Canvas_Vg_Data *pd, do
 }
 
 EOLIAN static void
-_efl_canvas_vg_viewbox_align_get(const Eo *obj EINA_UNUSED, Efl_Canvas_Vg_Data *pd, double *align_x, double *align_y)
+_efl_canvas_vg_object_viewbox_align_get(const Eo *obj EINA_UNUSED, Efl_Canvas_Vg_Object_Data *pd, double *align_x, double *align_y)
 {
    if (align_x) *align_x = pd->align_x;
    if (align_y) *align_y = pd->align_y;
 }
 
 static Eina_Bool
-_vg_file_mmap_set(Eo *eo_obj, Efl_Canvas_Vg_Data *pd, const Eina_File *file, const char *key, Eina_Bool mmap)
+_vg_file_mmap_set(Eo *eo_obj, Efl_Canvas_Vg_Object_Data *pd, const Eina_File *file, const char *key, Eina_Bool mmap)
 {
    Vg_Cache_Entry *old_entry;
    Evas_Object_Protected_Data *obj;
@@ -282,9 +282,9 @@ _vg_file_mmap_set(Eo *eo_obj, Efl_Canvas_Vg_Data *pd, const Eina_File *file, con
 }
 
 EOLIAN static void
-_efl_canvas_vg_efl_file_mmap_get(const Eo *eo_obj EINA_UNUSED,
-                                 Efl_Canvas_Vg_Data *pd,
-                                 const Eina_File **file, const char **key)
+_efl_canvas_vg_object_efl_file_mmap_get(const Eo *eo_obj EINA_UNUSED,
+                                        Efl_Canvas_Vg_Object_Data *pd,
+                                        const Eina_File **file, const char **key)
 {
    if (file) *file = NULL;
    if (key) *key = NULL;
@@ -297,7 +297,7 @@ _efl_canvas_vg_efl_file_mmap_get(const Eo *eo_obj EINA_UNUSED,
 }
 
 EOLIAN static Eina_Bool
-_efl_canvas_vg_efl_file_mmap_set(Eo *eo_obj, Efl_Canvas_Vg_Data *pd, const Eina_File *file, const char *key)
+_efl_canvas_vg_object_efl_file_mmap_set(Eo *eo_obj, Efl_Canvas_Vg_Object_Data *pd, const Eina_File *file, const char *key)
 {
    Eina_File *pf = pd->file;
    Eina_Bool ret;
@@ -334,7 +334,7 @@ _efl_canvas_vg_efl_file_mmap_set(Eo *eo_obj, Efl_Canvas_Vg_Data *pd, const Eina_
 }
 
 EOLIAN static Eina_Bool
-_efl_canvas_vg_efl_file_file_set(Eo *eo_obj, Efl_Canvas_Vg_Data *pd, const char *file, const char *key)
+_efl_canvas_vg_object_efl_file_file_set(Eo *eo_obj, Efl_Canvas_Vg_Object_Data *pd, const char *file, const char *key)
 {
    Eina_File *pf = pd->file;
    Eina_Bool ret;
@@ -384,7 +384,7 @@ _efl_canvas_vg_efl_file_file_set(Eo *eo_obj, Efl_Canvas_Vg_Data *pd, const char 
 }
 
 EOLIAN static void
-_efl_canvas_vg_efl_file_file_get(const Eo *obj EINA_UNUSED, Efl_Canvas_Vg_Data *pd, const char **file, const char **key)
+_efl_canvas_vg_object_efl_file_file_get(const Eo *obj EINA_UNUSED, Efl_Canvas_Vg_Object_Data *pd, const char **file, const char **key)
 {
    if (file) *file = NULL;
    if (key) *key = NULL;
@@ -397,7 +397,7 @@ _efl_canvas_vg_efl_file_file_get(const Eo *obj EINA_UNUSED, Efl_Canvas_Vg_Data *
 }
 
 EOLIAN static Eina_Bool
-_efl_canvas_vg_efl_file_save(const Eo *obj, Efl_Canvas_Vg_Data *pd, const char *file, const char *key, const char *flags)
+_efl_canvas_vg_object_efl_file_save(const Eo *obj, Efl_Canvas_Vg_Object_Data *pd, const char *file, const char *key, const char *flags)
 {
    if (pd->vg_entry)
      return evas_cache_vg_entry_file_save(pd->vg_entry, file, key, flags);
@@ -410,7 +410,7 @@ _efl_canvas_vg_efl_file_save(const Eo *obj, Efl_Canvas_Vg_Data *pd, const char *
 static void
 _cleanup_reference(void *data, const Efl_Event *event EINA_UNUSED)
 {
-   Efl_Canvas_Vg_Data *pd = data;
+   Efl_Canvas_Vg_Object_Data *pd = data;
    Eo *renderer;
 
    /* unref all renderer and may also destroy them async */
@@ -419,7 +419,7 @@ _cleanup_reference(void *data, const Efl_Event *event EINA_UNUSED)
 }
 
 EOLIAN static void
-_efl_canvas_vg_efl_object_destructor(Eo *eo_obj, Efl_Canvas_Vg_Data *pd)
+_efl_canvas_vg_object_efl_object_destructor(Eo *eo_obj, Efl_Canvas_Vg_Object_Data *pd)
 {
    Evas *e = evas_object_evas_get(eo_obj);
 
@@ -449,7 +449,7 @@ _efl_canvas_vg_efl_object_destructor(Eo *eo_obj, Efl_Canvas_Vg_Data *pd)
 }
 
 EOLIAN static Eo *
-_efl_canvas_vg_efl_object_constructor(Eo *eo_obj, Efl_Canvas_Vg_Data *pd)
+_efl_canvas_vg_object_efl_object_constructor(Eo *eo_obj, Efl_Canvas_Vg_Object_Data *pd)
 {
    Evas_Object_Protected_Data *obj = efl_data_scope_get(eo_obj, EFL_CANVAS_OBJECT_CLASS);
 
@@ -472,7 +472,7 @@ _efl_canvas_vg_efl_object_constructor(Eo *eo_obj, Efl_Canvas_Vg_Data *pd)
 }
 
 static Efl_Object *
-_efl_canvas_vg_efl_object_finalize(Eo *obj, Efl_Canvas_Vg_Data *pd)
+_efl_canvas_vg_object_efl_object_finalize(Eo *obj, Efl_Canvas_Vg_Object_Data *pd)
 {
    Evas *e = evas_object_evas_get(obj);
 
@@ -484,7 +484,7 @@ _efl_canvas_vg_efl_object_finalize(Eo *obj, Efl_Canvas_Vg_Data *pd)
 }
 
 static void
-_evas_vg_render(Evas_Object_Protected_Data *obj, Efl_Canvas_Vg_Data *pd,
+_evas_vg_render(Evas_Object_Protected_Data *obj, Efl_Canvas_Vg_Object_Data *pd,
                 void *engine, void *output, void *context, void *surface, Efl_VG *n,
                 Eina_Array *clips, Eina_Bool do_async)
 {
@@ -513,7 +513,7 @@ _evas_vg_render(Evas_Object_Protected_Data *obj, Efl_Canvas_Vg_Data *pd,
 
 //renders a vg_tree to an offscreen buffer and push it to the cache.
 static void *
-_render_to_buffer(Evas_Object_Protected_Data *obj, Efl_Canvas_Vg_Data *pd,
+_render_to_buffer(Evas_Object_Protected_Data *obj, Efl_Canvas_Vg_Object_Data *pd,
                   void *engine, void *surface,
                   Efl_VG *root, int w, int h, void *key,
                   void *buffer, Eina_Bool do_async, Eina_Bool cacheable)
@@ -597,7 +597,7 @@ _render_buffer_to_screen(Evas_Object_Protected_Data *obj,
 
 static void
 _cache_vg_entry_render(Evas_Object_Protected_Data *obj,
-                       Efl_Canvas_Vg_Data *pd,
+                       Efl_Canvas_Vg_Object_Data *pd,
                        void *engine, void *output, void *context, void *surface,
                        int x, int y, int w, int h, Eina_Bool do_async,
                        Eina_Bool cacheable)
@@ -635,7 +635,7 @@ _cache_vg_entry_render(Evas_Object_Protected_Data *obj,
 
 static void
 _user_vg_entry_render(Evas_Object_Protected_Data *obj,
-                      Efl_Canvas_Vg_Data *pd,
+                      Efl_Canvas_Vg_Object_Data *pd,
                       void *engine, void *output, void *context, void *surface,
                       int x, int y, int w, int h, Eina_Bool do_async,
                       Eina_Bool cacheable)
@@ -688,13 +688,13 @@ _user_vg_entry_render(Evas_Object_Protected_Data *obj,
 }
 
 static void
-_efl_canvas_vg_render(Evas_Object *eo_obj EINA_UNUSED,
-                      Evas_Object_Protected_Data *obj,
-                      void *type_private_data,
-                      void *engine, void *output, void *context, void *surface,
-                      int x, int y, Eina_Bool do_async)
+_efl_canvas_vg_object_render(Evas_Object *eo_obj EINA_UNUSED,
+                             Evas_Object_Protected_Data *obj,
+                             void *type_private_data,
+                             void *engine, void *output, void *context, void *surface,
+                             int x, int y, Eina_Bool do_async)
 {
-   Efl_Canvas_Vg_Data *pd = type_private_data;
+   Efl_Canvas_Vg_Object_Data *pd = type_private_data;
 
    /* render object to surface with context, and offxet by x,y */
    obj->layer->evas->engine.func->context_color_set(engine, context,
@@ -735,11 +735,11 @@ _efl_canvas_vg_render(Evas_Object *eo_obj EINA_UNUSED,
 }
 
 static void
-_efl_canvas_vg_render_pre(Evas_Object *eo_obj,
-                          Evas_Object_Protected_Data *obj,
-                          void *type_private_data)
+_efl_canvas_vg_object_render_pre(Evas_Object *eo_obj,
+                                 Evas_Object_Protected_Data *obj,
+                                 void *type_private_data)
 {
-   Efl_Canvas_Vg_Data *pd = type_private_data;
+   Efl_Canvas_Vg_Object_Data *pd = type_private_data;
    int is_v, was_v;
    Ector_Surface *s;
 
@@ -856,9 +856,9 @@ done:
 }
 
 static void
-_efl_canvas_vg_render_post(Evas_Object *eo_obj EINA_UNUSED,
-                           Evas_Object_Protected_Data *obj,
-                           void *type_private_data EINA_UNUSED)
+_efl_canvas_vg_object_render_post(Evas_Object *eo_obj EINA_UNUSED,
+                                  Evas_Object_Protected_Data *obj,
+                                  void *type_private_data EINA_UNUSED)
 {
    /* this moves the current data to the previous state parts of the object */
    /* in whatever way is safest for the object. also if we don't need object */
@@ -870,75 +870,75 @@ _efl_canvas_vg_render_post(Evas_Object *eo_obj EINA_UNUSED,
 }
 
 static void *
-_efl_canvas_vg_engine_data_get(Evas_Object *eo_obj)
+_efl_canvas_vg_object_engine_data_get(Evas_Object *eo_obj)
 {
-   Efl_Canvas_Vg_Data *o = efl_data_scope_get(eo_obj, MY_CLASS);
+   Efl_Canvas_Vg_Object_Data *o = efl_data_scope_get(eo_obj, MY_CLASS);
    return o->engine_data;
 }
 
 static int
-_efl_canvas_vg_is_opaque(Evas_Object *eo_obj EINA_UNUSED,
-                         Evas_Object_Protected_Data *obj EINA_UNUSED,
-                         void *type_private_data EINA_UNUSED)
+_efl_canvas_vg_object_is_opaque(Evas_Object *eo_obj EINA_UNUSED,
+                                Evas_Object_Protected_Data *obj EINA_UNUSED,
+                                void *type_private_data EINA_UNUSED)
 {
    return 0;
 }
 
 static int
-_efl_canvas_vg_was_opaque(Evas_Object *eo_obj EINA_UNUSED,
-                          Evas_Object_Protected_Data *obj EINA_UNUSED,
-                          void *type_private_data EINA_UNUSED)
+_efl_canvas_vg_object_was_opaque(Evas_Object *eo_obj EINA_UNUSED,
+                                 Evas_Object_Protected_Data *obj EINA_UNUSED,
+                                 void *type_private_data EINA_UNUSED)
 {
    return 0;
 }
 
 /* animated feature */
 EOLIAN static Eina_Bool
-_efl_canvas_vg_efl_gfx_image_animation_controller_animated_get(const Eo *eo_obj EINA_UNUSED,
-                                                               Efl_Canvas_Vg_Data *pd EINA_UNUSED EINA_UNUSED)
+_efl_canvas_vg_object_efl_gfx_image_animation_controller_animated_get(const Eo *eo_obj EINA_UNUSED,
+                                                                      Efl_Canvas_Vg_Object_Data *pd EINA_UNUSED EINA_UNUSED)
 {
    //TODO:
    return EINA_TRUE;
 }
 
 EOLIAN static int
-_efl_canvas_vg_efl_gfx_image_animation_controller_animated_frame_count_get(const Eo *eo_obj EINA_UNUSED,
-                                                                           Efl_Canvas_Vg_Data *pd EINA_UNUSED)
+_efl_canvas_vg_object_efl_gfx_image_animation_controller_animated_frame_count_get(const Eo *eo_obj EINA_UNUSED,
+                                                                                  Efl_Canvas_Vg_Object_Data *pd EINA_UNUSED)
 {
    if (!pd->vg_entry) return 0;
    return evas_cache_vg_anim_frame_count_get(pd->vg_entry);
 }
 
 EOLIAN static Efl_Gfx_Image_Animation_Controller_Loop_Hint
-_efl_canvas_vg_efl_gfx_image_animation_controller_animated_loop_type_get(const Eo *eo_obj EINA_UNUSED,
-                                                                         Efl_Canvas_Vg_Data *pd EINA_UNUSED)
+_efl_canvas_vg_object_efl_gfx_image_animation_controller_animated_loop_type_get(const Eo *eo_obj EINA_UNUSED,
+                                                                                Efl_Canvas_Vg_Object_Data *pd EINA_UNUSED)
 {
    //TODO:
    return EFL_GFX_IMAGE_ANIMATION_CONTROLLER_LOOP_HINT_NONE;
 }
 
 EOLIAN static int
-_efl_canvas_vg_efl_gfx_image_animation_controller_animated_loop_count_get(const Eo *eo_obj EINA_UNUSED,
-                                                                          Efl_Canvas_Vg_Data *pd EINA_UNUSED)
+_efl_canvas_vg_object_efl_gfx_image_animation_controller_animated_loop_count_get(const Eo *eo_obj EINA_UNUSED,
+                                                                                 Efl_Canvas_Vg_Object_Data *pd EINA_UNUSED)
 {
    //TODO:
    return 0;
 }
 
 EOLIAN static double
-_efl_canvas_vg_efl_gfx_image_animation_controller_animated_frame_duration_get(const Eo *eo_obj EINA_UNUSED,
-                                                                              Efl_Canvas_Vg_Data *pd,
-                                                                              int start_frame EINA_UNUSED,
-                                                                              int frame_num EINA_UNUSED)
+_efl_canvas_vg_object_efl_gfx_image_animation_controller_animated_frame_duration_get(const Eo *eo_obj EINA_UNUSED,
+                                                                                     Efl_Canvas_Vg_Object_Data *pd,
+                                                                                     int start_frame EINA_UNUSED,
+                                                                                     int frame_num EINA_UNUSED)
 {
    if (!pd->vg_entry) return 0;
    return evas_cache_vg_anim_duration_get(pd->vg_entry);
 }
 
 EOLIAN static Eina_Bool
-_efl_canvas_vg_efl_gfx_image_animation_controller_animated_frame_set(Eo *eo_obj,
-                                                                     Efl_Canvas_Vg_Data *pd,
-                                                                     int frame_index)
+_efl_canvas_vg_object_efl_gfx_image_animation_controller_animated_frame_set(Eo *eo_obj,
+                                                                            Efl_Canvas_Vg_Object_Data *pd,
+                                                                            int frame_index)
 {
    //TODO: Validate frame_index range
    if (pd->frame_index == frame_index) return EINA_TRUE;
@@ -952,15 +952,15 @@ _efl_canvas_vg_efl_gfx_image_animation_controller_animated_frame_set(Eo *eo_obj,
 }
 
 EOLIAN static int
-_efl_canvas_vg_efl_gfx_image_animation_controller_animated_frame_get(const Eo *eo_obj EINA_UNUSED,
-                                                                     Efl_Canvas_Vg_Data *pd EINA_UNUSED)
+_efl_canvas_vg_object_efl_gfx_image_animation_controller_animated_frame_get(const Eo *eo_obj EINA_UNUSED,
+                                                                            Efl_Canvas_Vg_Object_Data *pd EINA_UNUSED)
 {
    return pd->frame_index;
 }
 
 EOLIAN static Eina_Size2D
-_efl_canvas_vg_default_size_get(const Eo *eo_obj EINA_UNUSED,
-                                Efl_Canvas_Vg_Data *pd EINA_UNUSED)
+_efl_canvas_vg_object_default_size_get(const Eo *eo_obj EINA_UNUSED,
+                                       Efl_Canvas_Vg_Object_Data *pd EINA_UNUSED)
 {
    return evas_cache_vg_entry_default_size_get(pd->vg_entry);
 }
@@ -1010,4 +1010,4 @@ evas_object_vg_file_set(Evas_Object *obj, const char *file, const char *key)
    return efl_file_set(obj, file, key);
 }
 
-#include "efl_canvas_vg.eo.c"
+#include "efl_canvas_vg_object.eo.c"

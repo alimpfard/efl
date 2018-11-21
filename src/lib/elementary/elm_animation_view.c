@@ -47,7 +47,7 @@ _sizing_eval(void *data)
    double hw,hh;
    efl_gfx_size_hint_weight_get(pd->obj, &hw, &hh);
 
-   Eina_Size2D size = efl_canvas_vg_default_size_get(pd->vg);
+   Eina_Size2D size = efl_canvas_vg_object_default_size_get(pd->vg);
 
    Eina_Size2D min = {-1, -1};
    if (hw == 0) min.w = size.w;
@@ -528,7 +528,7 @@ EOLIAN static Eina_Size2D
 _elm_animation_view_default_size_get(const Eo *obj EINA_UNUSED,
                                      Elm_Animation_View_Data *pd EINA_UNUSED)
 {
-   return efl_canvas_vg_default_size_get(pd->vg);
+   return efl_canvas_vg_object_default_size_get(pd->vg);
 }
 
 EAPI Elm_Animation_View*
