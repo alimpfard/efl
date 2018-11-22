@@ -158,6 +158,12 @@ interface Efl.Ui.Focus.Manager {
              entry : Efl.Ui.Focus.Object; [[The object that caused this manager to be redirect]]
            }
         }
+        dirty_logic_freeze {
+          [[call to disable the cache invalidate mechanism]]
+        }
+        dirty_logic_unfreeze {
+          [[call to disable the cache invalidate mechanism]]
+        }
     }
     events {
         redirect,changed : Efl.Ui.Focus.Manager; [[Emitted when the redirect
@@ -167,5 +173,6 @@ interface Efl.Ui.Focus.Manager {
             potential changes in border_elements you want to know about]]
         focus,changed : Efl.Ui.Focus.Object; [[Emitted if the manager has focused an
             object, the passed focus object is the last focused object]]
+        dirty_logic_freeze,changed : bool;
     }
 }
