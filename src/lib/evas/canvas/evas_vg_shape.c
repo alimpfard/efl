@@ -96,6 +96,8 @@ _efl_canvas_vg_shape_render_pre(Eo *obj EINA_UNUSED,
    fill = _evas_vg_render_pre(pd->fill, s, current);
    stroke_fill = _evas_vg_render_pre(pd->stroke.fill, s, current);
    stroke_marker = _evas_vg_render_pre(pd->stroke.marker, s, current);
+
+   //FIXME: We suppose this mask is always Shape.
    mask = _evas_vg_render_pre(nd->mask, s, current);
 
    if (!nd->renderer)
@@ -104,7 +106,6 @@ _efl_canvas_vg_shape_render_pre(Eo *obj EINA_UNUSED,
         nd->renderer = ector_surface_renderer_factory_new(s, ECTOR_RENDERER_SHAPE_MIXIN);
         efl_domain_current_pop();
      }
-
    ector_renderer_transformation_set(nd->renderer, current);
    ector_renderer_origin_set(nd->renderer, nd->x, nd->y);
    ector_renderer_color_set(nd->renderer, nd->r, nd->g, nd->b, nd->a);
@@ -114,6 +115,7 @@ _efl_canvas_vg_shape_render_pre(Eo *obj EINA_UNUSED,
    ector_renderer_shape_stroke_fill_set(nd->renderer, stroke_fill ? stroke_fill->renderer : NULL);
    ector_renderer_shape_stroke_marker_set(nd->renderer, stroke_marker ? stroke_marker->renderer : NULL);
    efl_gfx_path_copy_from(nd->renderer, obj);
+
    ector_renderer_prepare(nd->renderer);
 }
 

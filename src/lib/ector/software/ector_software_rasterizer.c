@@ -464,7 +464,8 @@ ector_software_rasterizer_generate_stroke_rle_data(Ector_Software_Thread *thread
    return rle_data;
 }
 
-void ector_software_rasterizer_destroy_rle_data(Shape_Rle_Data *rle)
+void
+ector_software_rasterizer_destroy_rle_data(Shape_Rle_Data *rle)
 {
    if (rle)
      {
@@ -483,12 +484,14 @@ void _setup_span_fill_matrix(Software_Rasterizer *rasterizer)
      eina_matrix3_identity(&rasterizer->fill_data.inv);
 }
 
-void ector_software_rasterizer_transform_set(Software_Rasterizer *rasterizer, Eina_Matrix3 *t)
+void
+ector_software_rasterizer_transform_set(Software_Rasterizer *rasterizer, Eina_Matrix3 *t)
 {
    rasterizer->transform = t;
 }
 
-void ector_software_rasterizer_clip_rect_set(Software_Rasterizer *rasterizer, Eina_Array *clips)
+void
+ector_software_rasterizer_clip_rect_set(Software_Rasterizer *rasterizer, Eina_Array *clips)
 {
    if (clips)
      {
@@ -504,14 +507,17 @@ void ector_software_rasterizer_clip_rect_set(Software_Rasterizer *rasterizer, Ei
      }
 }
 
-void ector_software_rasterizer_clip_shape_set(Software_Rasterizer *rasterizer, Shape_Rle_Data *clip)
+void
+ector_software_rasterizer_clip_shape_set(Software_Rasterizer *rasterizer, Shape_Rle_Data *clip)
 {
    rasterizer->fill_data.clip.path = clip;
    rasterizer->fill_data.clip.has_path_clip = EINA_TRUE;
    rasterizer->fill_data.clip.enabled = EINA_TRUE;
+   ERR("raster = %p shape set = %p", rasterizer, clip);
 }
 
-void ector_software_rasterizer_color_set(Software_Rasterizer *rasterizer, int r, int g, int b, int a)
+void
+ector_software_rasterizer_color_set(Software_Rasterizer *rasterizer, int r, int g, int b, int a)
 {
    rasterizer->fill_data.color = DRAW_ARGB_JOIN(a, r, g, b);
    rasterizer->fill_data.type = Solid;
@@ -524,16 +530,18 @@ void ector_software_rasterizer_linear_gradient_set(Software_Rasterizer *rasteriz
    rasterizer->fill_data.type = LinearGradient;
 }
 
-void ector_software_rasterizer_radial_gradient_set(Software_Rasterizer *rasterizer,
-                                                   Ector_Renderer_Software_Gradient_Data *radial)
+void
+ector_software_rasterizer_radial_gradient_set(Software_Rasterizer *rasterizer,
+                                              Ector_Renderer_Software_Gradient_Data *radial)
 {
    rasterizer->fill_data.gradient = radial;
    rasterizer->fill_data.type = RadialGradient;
 }
 
-void ector_software_rasterizer_draw_rle_data(Software_Rasterizer *rasterizer,
-                                             int x, int y, uint32_t mul_col,
-                                             Efl_Gfx_Render_Op op, Shape_Rle_Data* rle)
+void
+ector_software_rasterizer_draw_rle_data(Software_Rasterizer *rasterizer,
+                                        int x, int y, uint32_t mul_col,
+                                        Efl_Gfx_Render_Op op, Shape_Rle_Data* rle)
 {
    // check for NULL rle data
    if (!rle) return;

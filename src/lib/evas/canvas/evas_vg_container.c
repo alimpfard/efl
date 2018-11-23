@@ -36,6 +36,7 @@ _efl_canvas_vg_container_render_pre(Eo *obj EINA_UNUSED,
    Efl_Gfx_Change_Flag flag;
 
    if (nd->flags == EFL_GFX_CHANGE_FLAG_NONE) return;
+   if (nd->masking) return;
 
    flag = nd->flags;
    nd->flags = EFL_GFX_CHANGE_FLAG_NONE;
@@ -44,15 +45,19 @@ _efl_canvas_vg_container_render_pre(Eo *obj EINA_UNUSED,
 
    EINA_LIST_FOREACH(pd->children, l, child)
      {
+        child_nd = efl_data_scope_get(child, EFL_CANVAS_VG_NODE_CLASS);
+
+        //FIXME: We suppose type of masking is always Shape...
+        //Masking will be updated by Shape.
+        if (child_nd->masking) continue;
+
         //Skip Gradients. they will be updated by Shape.
         if (efl_isa(child, EFL_CANVAS_VG_GRADIENT_CLASS))
           continue;
 
         if (flag & EFL_GFX_CHANGE_FLAG_MATRIX)
-          {
-             child_nd = efl_data_scope_get(child, EFL_CANVAS_VG_NODE_CLASS);
-             child_nd->flags |= EFL_GFX_CHANGE_FLAG_MATRIX;
-          }
+          child_nd->flags |= EFL_GFX_CHANGE_FLAG_MATRIX;
+
         _evas_vg_render_pre(child, s, current);
      }
 }

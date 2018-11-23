@@ -12,6 +12,8 @@
 #include "ector_private.h"
 #include "ector_software_private.h"
 
+#define MY_CLASS ECTOR_RENDERER_SOFTWARE_SHAPE_CLASS
+
 typedef struct _Ector_Renderer_Software_Shape_Data Ector_Renderer_Software_Shape_Data;
 typedef struct _Ector_Software_Shape_Task Ector_Software_Shape_Task;
 
@@ -631,14 +633,6 @@ _ector_renderer_software_shape_ector_renderer_prepare(Eo *obj,
 {
    Ector_Software_Shape_Task *task;
 
-   // FIXME: shouldn't this be part of the shape generic implementation?
-   if (pd->shape->fill)
-     ector_renderer_prepare(pd->shape->fill);
-   if (pd->shape->stroke.fill)
-     ector_renderer_prepare(pd->shape->stroke.fill);
-   if (pd->shape->stroke.marker)
-     ector_renderer_prepare(pd->shape->stroke.marker);
-
    // FIXME: shouldn't this be moved to the software base object?
    if (!pd->surface)
      pd->surface = efl_data_xref(pd->base->surface, ECTOR_SOFTWARE_SURFACE_CLASS, obj);
@@ -663,14 +657,27 @@ _ector_renderer_software_shape_ector_renderer_draw(Eo *obj,
    task = _need_update_rle(obj, pd);
    if (task) ector_software_wait(_update_rle, _done_rle, task);
 
+   // check if mask data are ready
+   Eo *mask = pd->base->mask;
+   if (mask)
+     {
+        Ector_Renderer_Software_Shape_Data *pd2 = efl_data_scope_get(mask, MY_CLASS);
+        if (pd2)
+          {
+             task = _need_update_rle(mask, pd2);
+             if (task) ector_software_wait(_update_rle, _done_rle, task);
+             ector_software_rasterizer_clip_shape_set(pd->surface->rasterizer, pd2->shape_data);
+          }
+     }
+
    // adjust the offset
    x = pd->surface->x + (int)pd->base->origin.x;
    y = pd->surface->y + (int)pd->base->origin.y;
 
-   // fill the span_data structure
    ector_software_rasterizer_clip_rect_set(pd->surface->rasterizer, clips);
    ector_software_rasterizer_transform_set(pd->surface->rasterizer, pd->base->m);
 
+   // fill the span_data structure
    if (pd->shape->fill)
      {
         ector_renderer_software_op_fill(pd->shape->fill);
@@ -738,7 +745,7 @@ _ector_renderer_software_shape_efl_gfx_path_path_set(Eo *obj,
    pd->shape_data = NULL;
    pd->outline_data = NULL;
 
-   efl_gfx_path_set(efl_super(obj, ECTOR_RENDERER_SOFTWARE_SHAPE_CLASS), op, points);
+   efl_gfx_path_set(efl_super(obj, MY_CLASS), op, points);
 }
 
 
@@ -762,7 +769,7 @@ _ector_renderer_software_shape_path_changed(void *data, const Efl_Event *event E
 static Eo *
 _ector_renderer_software_shape_efl_object_constructor(Eo *obj, Ector_Renderer_Software_Shape_Data *pd)
 {
-   obj = efl_constructor(efl_super(obj, ECTOR_RENDERER_SOFTWARE_SHAPE_CLASS));
+   obj = efl_constructor(efl_super(obj, MY_CLASS));
    if (!obj) return NULL;
 
    pd->task = NULL;
@@ -790,9 +797,11 @@ _ector_renderer_software_shape_efl_object_destructor(Eo *obj, Ector_Renderer_Sof
    free(pd->task);
 
    efl_data_xunref(pd->base->surface, pd->surface, obj);
-   efl_data_xunref(obj, pd->shape, obj);
    efl_data_xunref(obj, pd->base, obj);
-   efl_destructor(efl_super(obj, ECTOR_RENDERER_SOFTWARE_SHAPE_CLASS));
+   efl_data_xunref(obj, pd->shape, obj);
+   efl_data_xunref(obj, pd->public_shape, obj);
+
+   efl_destructor(efl_super(obj, MY_CLASS));
 }
 
 
@@ -802,7 +811,7 @@ _ector_renderer_software_shape_ector_renderer_crc_get(const Eo *obj,
 {
    unsigned int crc;
 
-   crc = ector_renderer_crc_get(efl_super(obj, ECTOR_RENDERER_SOFTWARE_SHAPE_CLASS));
+   crc = ector_renderer_crc_get(efl_super(obj, MY_CLASS));
 
    crc = eina_crc((void*) &pd->shape->stroke.marker,
                   sizeof (pd->shape->stroke.marker),

@@ -505,7 +505,8 @@ _evas_vg_render(Evas_Object_Protected_Data *obj, Efl_Canvas_Vg_Object_Data *pd,
      {
         Efl_Canvas_Vg_Node_Data *nd;
         nd = efl_data_scope_get(n, EFL_CANVAS_VG_NODE_CLASS);
-        obj->layer->evas->engine.func->ector_renderer_draw(engine, output, context, surface, nd->renderer, clips, do_async);
+        if (!nd->masking)
+          obj->layer->evas->engine.func->ector_renderer_draw(engine, output, context, surface, nd->renderer, clips, do_async);
         if (do_async)
           eina_array_push(&pd->cleanup, efl_ref(nd->renderer));
      }

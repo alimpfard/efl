@@ -77,6 +77,7 @@ struct _Efl_Canvas_Vg_Node_Data
    Eina_Bool visibility : 1;
    Eina_Bool changed : 1;
    Eina_Bool parenting : 1;
+   Eina_Bool masking : 1;
 };
 
 struct _Efl_Canvas_Vg_Container_Data

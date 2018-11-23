@@ -48,7 +48,7 @@ abstract Efl.Canvas.Vg.Node (Efl.Object, Efl.Gfx.Entity, Efl.Gfx.Color, Efl.Gfx.
          get {
          }
          values {
-            m: Efl.Canvas.Vg.Node; [[Object mask]]
+            mask: Efl.Canvas.Vg.Node; [[Object mask]]
          }
       }
 /*      quality {

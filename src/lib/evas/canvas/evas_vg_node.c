@@ -167,15 +167,24 @@ _efl_canvas_vg_node_efl_gfx_color_color_get(const Eo *obj EINA_UNUSED,
 }
 
 static void
-_efl_canvas_vg_node_mask_set(Eo *obj EINA_UNUSED,
-                       Efl_Canvas_Vg_Node_Data *pd,
-                       Efl_VG *r)
+_efl_canvas_vg_node_mask_set(Eo *obj,
+                             Efl_Canvas_Vg_Node_Data *pd,
+                             Efl_Canvas_Vg_Node *mask)
 {
-   Efl_VG *tmp = pd->mask;
+   if (pd->mask)
+     {
+        Efl_Canvas_Vg_Node_Data *pd2 = efl_data_scope_get(pd->mask, MY_CLASS);
+        pd2->masking = EINA_FALSE;
+     }
 
-   pd->mask = efl_ref(r);
-   efl_unref(tmp);
+   if (mask)
+     {
+        //FIXME: Must unset previous masking target.
+        Efl_Canvas_Vg_Node_Data *pd2 = efl_data_scope_get(mask, MY_CLASS);
+        pd2->masking = EINA_TRUE;
+     }
 
+   efl_replace(&pd->mask, mask);
    _efl_canvas_vg_node_changed(obj);
 }
 
@@ -275,6 +284,7 @@ _efl_canvas_vg_node_efl_object_destructor(Eo *obj, Efl_Canvas_Vg_Node_Data *pd)
         pd->intp = NULL;
      }
 
+   efl_unref(pd->mask);
    efl_destructor(efl_super(obj, MY_CLASS));
 }
 
