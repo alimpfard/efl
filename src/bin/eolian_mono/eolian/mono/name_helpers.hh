@@ -365,11 +365,19 @@ inline std::string managed_event_name(std::string const& name)
 
 inline std::string managed_event_args_short_name(attributes::event_def const& evt)
 {
-   return name_helpers::managed_event_name(evt.name) + "_Args";
+   std::string ret;
+   if (evt.klass.type == attributes::class_type::interface_ || evt.klass.type == attributes::class_type::mixin)
+     ret = klass_interface_name(evt.klass);
+   return ret + name_helpers::managed_event_name(evt.name) + "_Args";
 }
 
 inline std::string managed_event_args_name(attributes::event_def evt)
 {
+   if (evt.klass.type == attributes::class_type::interface_ || evt.klass.type == attributes::class_type::mixin)
+     {
+         std::string ret = join_namespaces(evt.klass.namespaces, '.', managed_namespace);
+         return ret + managed_event_args_short_name(evt);
+     }
    return klass_full_concrete_name(evt.klass) + "." + managed_event_args_short_name(evt);
 }
 

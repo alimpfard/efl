@@ -166,6 +166,11 @@ struct klass
 
      // End of interface declaration
      if(!as_generator("}\n").generate(sink, attributes::unused, iface_cxt)) return false;
+
+     // Interface events arguments go in the top namespace to avoid the Concrete suffix clutter.
+     if(!as_generator(*(event_argument_wrapper)).generate(sink, cls.events, iface_cxt))
+       return false;
+
      }
 
      bool root = !helpers::has_regular_ancestor(cls);
@@ -249,10 +254,8 @@ struct klass
          if(!as_generator(*(async_function_definition)).generate(sink, implemented_methods, concrete_cxt))
            return false;
 
-         if(!as_generator(*(event_argument_wrapper)).generate(sink, cls.events, context))
-           return false;
-
          if(!as_generator("}\n").generate(sink, attributes::unused, concrete_cxt)) return false;
+
        }
 
      // Inheritable class

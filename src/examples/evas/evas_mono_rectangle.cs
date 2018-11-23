@@ -34,7 +34,7 @@ class TestMain
         // Maybe we could move them to the upper namespace with the name of the class as prefix
         // e.g. Efl.Ui.InterfaceKeyDown_Args
         // Also, interface events are currently declared at the interface level.
-        ((Efl.Input.Interface)canvas).KeyDownEvt += (object sender, Efl.Input.InterfaceConcrete.KeyDownEvt_Args e) => {
+        ((Efl.Input.Interface)canvas).KeyDownEvt += (object sender, Efl.Input.InterfaceKeyDownEvt_Args e) => {
             color_index = (color_index + 1) % 3;
             Console.WriteLine("Key Down");
             Console.WriteLine("Got key obj at {0}", e.arg.NativeHandle.ToString("X"));
