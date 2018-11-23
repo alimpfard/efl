@@ -162,46 +162,57 @@ _construct_drawable_nodes(Efl_VG *root, const LOTLayerNode *layer)
           efl_gfx_shape_fill_rule_set(shape, EFL_GFX_FILL_RULE_ODD_EVEN);
         else if (node->mFillRule == FillWinding)
           efl_gfx_shape_fill_rule_set(shape, EFL_GFX_FILL_RULE_WINDING);
+
+        //4: Matte
+        switch (layer->mMatte)
+          {
+           case MatteNone:
+              break;
+           case MatteAlpha:
+              ERR("TODO: MatteAlpha");
+              break;
+           case MatteAlphaInv:
+              ERR("MatteAlphaInv");
+              break;
+           case MatteLuma:
+              ERR("TODO: MatteLuma");
+              break;
+           case MatteLumaInv:
+              ERR("TODO: MatteLumaInv");
+              break;
+           default:
+              ERR("No reserved Matte type = %d", layer->mMatte);
+          }
      }
 }
 
 static void
-_update_vg_tree(Efl_VG *root, const LOTLayerNode *layer, int idx)
+_update_vg_tree(Efl_VG *root, const LOTLayerNode *layer)
 {
    if (!layer || !layer->mVisible) return;
 
    //Note: We assume that if req_matte is true, next layer must be a matte layer.
    Eina_Bool req_matte = EINA_FALSE;
 
-   ERR("%d: Layer Size = %d, MatteType = %d Mask = %d", idx, layer->mLayerList.size, layer->mMatte, layer->mMaskList.size);
-
    //Is this layer a container layer?
    for (unsigned int i = 0; i < layer->mLayerList.size; i++)
      {
-        //This layer must be a mastte.
+        if (layer->mLayerList.ptr[i]->mMatte != MatteNone)
+          req_matte = EINA_TRUE;
+
+        _update_vg_tree(root, layer->mLayerList.ptr[i]);
+
+        //This layer must be a matte.
         if (req_matte)
           {
              req_matte = EINA_FALSE;
              continue;
           }
-
-        if (layer->mLayerList.ptr[i]->mMatte != MatteNone)
-          {
-             ERR("%d: in layer[%d], Matte = %d, SKIP", idx, i, layer->mLayerList.ptr[i]->mMatte);
-             req_matte = EINA_TRUE;
-          }
-
-        ERR("%d: in layer[%d], Matte = %d", idx, i, layer->mLayerList.ptr[i]->mMatte);
-        _update_vg_tree(root, layer->mLayerList.ptr[i], idx + 1);
-        ERR("%d: out layer[%d]", idx, i);
      }
 
    //Construct drawable nodes.
    if (layer->mNodeList.size > 0)
-     {
-        ERR("%d: Draw Nodes = %d", idx, layer->mNodeList.size);
-        _construct_drawable_nodes(root, layer);
-     }
+     _construct_drawable_nodes(root, layer);
 }
 #endif
 
@@ -221,7 +232,7 @@ vg_common_json_create_vg_node(Vg_File_Data *vfd)
    unsigned int frame_num = (vfd->anim_data) ? vfd->anim_data->frame_num : 0;
    const LOTLayerNode *tree =
       lottie_animation_render_tree(lot_anim, frame_num, vfd->view_box.w, vfd->view_box.h);
-   _update_vg_tree(root, tree, 0);
+   _update_vg_tree(root, tree);
 #else
    return EINA_FALSE;
 #endif
