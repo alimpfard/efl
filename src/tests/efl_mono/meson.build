@@ -1,4 +1,4 @@
-eo_files = ['test_child.eo', 'test_numberwrapper.eo', 'test_testing.eo']
+eo_files = ['dummy_child.eo', 'dummy_numberwrapper.eo', 'dummy_test_object.eo', 'dummy_test_iface.eo', 'dummy_another_iface.eo', 'dummy_inherit_helper.eo', 'dummy_inherit_iface.eo']
 
 eo_file_targets = []
 
@@ -6,7 +6,7 @@ foreach eo_file : eo_files
   eo_file_targets += custom_target('eolian_gen_' + eo_file,
     input : eo_file,
     output : [eo_file + '.h'],
-    command : [eolian_gen, '-I', meson.current_source_dir(), eolian_include_directories,
+    command : eolian_gen + [ '-I', meson.current_source_dir(), eolian_include_directories,
                            '-o', 'h:' + join_paths(meson.current_build_dir(), eo_file + '.h'),
                            '-o', 'c:' + join_paths(meson.current_build_dir(), eo_file + '.c'),
                            '-gch', '@INPUT@'])
@@ -39,6 +39,8 @@ efl_mono_test = library('efl_mono_test',
 efl_mono_src = [
      'Main.cs',
      'TestUtils.cs',
+     'EinaTestData.cs',
+     'StructHelpers.cs',
      'BasicDirection.cs',
      'Eina.cs',
      'Eldbus.cs',
@@ -55,7 +57,8 @@ efl_mono_src = [
      'Strings.cs',
      'Structs.cs',
      'Value.cs',
-     'ValueEolian.cs'
+     'ValueEolian.cs',
+     'Inheritance.cs',
 ]
 
 efl_mono_suite = executable('efl-mono-suite',

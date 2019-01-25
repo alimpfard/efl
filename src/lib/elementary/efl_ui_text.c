@@ -6,6 +6,7 @@
 #define EFL_ACCESS_TEXT_PROTECTED
 #define EFL_ACCESS_EDITABLE_TEXT_PROTECTED
 #define ELM_LAYOUT_PROTECTED
+#define EFL_PART_PROTECTED
 
 #include <Elementary.h>
 #include <Elementary_Cursor.h>
@@ -15,6 +16,8 @@
 #include "elm_widget_entry.h"
 #include "efl_ui_text.eo.h"
 #include "elm_hoversel.eo.h"
+#include "efl_ui_text_part.eo.h"
+#include "elm_part_helper.h"
 
 typedef struct _Efl_Ui_Text_Data        Efl_Ui_Text_Data;
 typedef struct _Efl_Ui_Text_Rectangle   Efl_Ui_Text_Rectangle;
@@ -33,6 +36,8 @@ struct _Efl_Ui_Text_Data
    Evas_Object                          *mgf_clip;
    Evas_Object                          *mgf_proxy;
    Eo                                   *text_obj;
+   Eo                                   *text_guide_obj;
+   Eo                                   *text_table;
    Eo                                   *pan;
    Eo                                   *scroller;
    Eo                                   *manager;
@@ -188,7 +193,7 @@ struct _Efl_Ui_Text_Rectangle
 struct _Selection_Loss_Data
 {
    Eo *obj;
-   Efl_Selection_Type stype;
+   Efl_Ui_Selection_Type stype;
 };
 
 #define MY_CLASS EFL_UI_TEXT_CLASS
@@ -591,7 +596,7 @@ _update_selection_handler(Eo *obj)
 
 static void
 _selection_data_cb(void *data EINA_UNUSED, Eo *obj,
-                   Efl_Selection_Data *sel_data)
+                   Efl_Ui_Selection_Data *sel_data)
 {
    Efl_Text_Cursor_Cursor *cur, *start, *end;
 
@@ -603,7 +608,7 @@ _selection_data_cb(void *data EINA_UNUSED, Eo *obj,
         efl_canvas_text_range_delete(obj, start, end);
      }
    cur = efl_text_cursor_get(obj, EFL_TEXT_CURSOR_GET_MAIN);
-   if (sel_data->format == EFL_SELECTION_FORMAT_MARKUP)
+   if (sel_data->format == EFL_UI_SELECTION_FORMAT_MARKUP)
      {
         efl_text_markup_cursor_markup_insert(obj, cur, buf);
      }
@@ -679,8 +684,8 @@ _get_drop_format(Evas_Object *obj)
    EFL_UI_TEXT_DATA_GET(obj, sd);
 
    if ((sd->editable) && (!sd->single_line) && (!sd->password) && (!sd->disabled))
-     return EFL_SELECTION_FORMAT_MARKUP | ELM_SEL_FORMAT_IMAGE;
-   return EFL_SELECTION_FORMAT_MARKUP;
+     return EFL_UI_SELECTION_FORMAT_MARKUP | ELM_SEL_FORMAT_IMAGE;
+   return EFL_UI_SELECTION_FORMAT_MARKUP;
 }
 
 /* we can't reuse layout's here, because it's on entry_edje only */
@@ -831,10 +836,9 @@ _cursor_geometry_recalc(Evas_Object *obj)
    edje_object_size_min_restricted_calc(sd->cursor, &cw, NULL, cw, 0);
    evas_object_geometry_get(sd->entry_edje, &x, &y, &w, &h);
    evas_object_geometry_get(
-         edje_object_part_swallow_get(sd->entry_edje, "efl.text"),
+         sd->text_obj,
          &x2, &y2, &w2, &h2);
-   cx = cx + x - x2;
-   cy = cy + y - y2;
+
    efl_ui_scrollable_scroll(sd->scroller, EINA_RECT(cx, cy, cw, ch), EINA_FALSE);
 
 }
@@ -946,7 +950,7 @@ _efl_ui_text_efl_ui_focus_object_on_focus_update(Eo *obj, Efl_Ui_Text_Data *sd)
      }
    else
      {
-        Eo *sw = edje_object_part_swallow_get(sd->entry_edje, "efl.text");
+        Eo *sw = sd->text_obj;
 
         _edje_signal_emit(sd, "efl,action,unfocus", "efl");
         if (sd->scroll)
@@ -1090,10 +1094,10 @@ _hover_selected_cb(void *data,
 static void
 _paste_cb(Eo *obj)
 {
-   Efl_Selection_Format formats = EFL_SELECTION_FORMAT_TEXT |
-      EFL_SELECTION_FORMAT_MARKUP;
+   Efl_Ui_Selection_Format formats = EFL_UI_SELECTION_FORMAT_TEXT |
+      EFL_UI_SELECTION_FORMAT_MARKUP;
 
-   efl_selection_get(obj, EFL_SELECTION_TYPE_CLIPBOARD, formats,
+   efl_ui_selection_get(obj, EFL_UI_SELECTION_TYPE_CLIPBOARD, formats,
          NULL, _selection_data_cb, NULL, 1);
 
 }
@@ -1112,8 +1116,8 @@ _selection_clear(void *data, Elm_Sel_Type selection)
    EFL_UI_TEXT_DATA_GET(data, sd);
 
    if (!sd->have_selection) return;
-   if ((selection == EFL_SELECTION_TYPE_CLIPBOARD) ||
-       (selection == EFL_SELECTION_TYPE_PRIMARY))
+   if ((selection == EFL_UI_SELECTION_TYPE_CLIPBOARD) ||
+       (selection == EFL_UI_SELECTION_TYPE_PRIMARY))
      {
         _efl_ui_text_select_none(data, sd);
      }
@@ -1128,10 +1132,10 @@ _selection_lost_cb(void *data, const Eina_Value value)
    EFL_UI_TEXT_DATA_GET(sdata->obj, sd);
    switch (sdata->stype)
      {
-      case EFL_SELECTION_TYPE_CLIPBOARD:
+      case EFL_UI_SELECTION_TYPE_CLIPBOARD:
          sd->sel_future.clipboard = NULL;
          break;
-      case EFL_SELECTION_TYPE_PRIMARY:
+      case EFL_UI_SELECTION_TYPE_PRIMARY:
       default:
          sd->sel_future.primary = NULL;
          break;
@@ -1141,12 +1145,12 @@ _selection_lost_cb(void *data, const Eina_Value value)
 }
 
 static void
-_selection_store(Efl_Selection_Type seltype,
+_selection_store(Efl_Ui_Selection_Type seltype,
                  Evas_Object *obj)
 {
    char *sel;
    Efl_Text_Cursor_Cursor *start, *end;
-   Efl_Selection_Format selformat = EFL_SELECTION_FORMAT_MARKUP;
+   Efl_Ui_Selection_Format selformat = EFL_UI_SELECTION_FORMAT_MARKUP;
    Eina_Slice slice;
    Selection_Loss_Data *ldata;
    Eina_Future *f;
@@ -1167,24 +1171,24 @@ _selection_store(Efl_Selection_Type seltype,
 
    switch (seltype)
      {
-      case EFL_SELECTION_TYPE_CLIPBOARD:
+      case EFL_UI_SELECTION_TYPE_CLIPBOARD:
          if (sd->sel_future.clipboard)
            {
               eina_future_cancel(sd->sel_future.clipboard);
            }
 
-         f = sd->sel_future.clipboard = efl_selection_set(obj, seltype,
+         f = sd->sel_future.clipboard = efl_ui_selection_set(obj, seltype,
                selformat, slice, 1);
          break;
 
-      case EFL_SELECTION_TYPE_PRIMARY:
+      case EFL_UI_SELECTION_TYPE_PRIMARY:
       default:
          if (sd->sel_future.primary)
            {
               eina_future_cancel(sd->sel_future.primary);
            }
 
-         f = sd->sel_future.primary = efl_selection_set(obj, seltype,
+         f = sd->sel_future.primary = efl_ui_selection_set(obj, seltype,
                selformat, slice, 1);
          break;
      }
@@ -1192,7 +1196,7 @@ _selection_store(Efl_Selection_Type seltype,
    ldata->obj = obj;
    eina_future_then_easy(f, _selection_lost_cb, NULL, NULL, EINA_VALUE_TYPE_UINT, ldata);
 
-   //if (seltype == EFL_SELECTION_TYPE_CLIPBOARD)
+   //if (seltype == EFL_UI_SELECTION_TYPE_CLIPBOARD)
    //  eina_stringshare_replace(&sd->cut_sel, sel);
 
    free(sel);
@@ -1215,7 +1219,7 @@ _cut_cb(Eo *obj)
    if (!_elm_config->desktop_entry)
      elm_widget_scroll_hold_pop(obj);
 
-   _selection_store(EFL_SELECTION_TYPE_CLIPBOARD, obj);
+   _selection_store(EFL_UI_SELECTION_TYPE_CLIPBOARD, obj);
    efl_text_interactive_selection_cursors_get(obj, &start, &end);
    efl_canvas_text_range_delete(obj, start, end);
 }
@@ -1242,7 +1246,7 @@ _copy_cb(Eo *obj)
         edje_object_signal_emit(sd->entry_edje, "efl,state,select,off", "efl");
         elm_widget_scroll_hold_pop(obj);
      }
-   _selection_store(EFL_SELECTION_TYPE_CLIPBOARD, obj);
+   _selection_store(EFL_UI_SELECTION_TYPE_CLIPBOARD, obj);
 }
 
 static void
@@ -1970,6 +1974,138 @@ _cb_deleted(void *data EINA_UNUSED, const Efl_Event *ev)
 
 }
 
+static void
+_update_guide_text(Eo *obj EINA_UNUSED, Efl_Ui_Text_Data *sd)
+{
+   const char *txt;
+   Eina_Bool show_guide;
+
+   txt = efl_text_get(sd->text_obj);
+
+   show_guide = (!txt || (txt[0] == '\0'));
+
+   efl_gfx_entity_visible_set(sd->text_guide_obj, show_guide);
+
+}
+
+/**
+ * @internal
+ * Returns the numeric value of HEX chars for example for ch = 'A'
+ * the function will return 10.
+ *
+ * @param ch The HEX char.
+ * @return numeric value of HEX.
+ */
+static int
+_hex_string_get(char ch, Eina_Bool *ok)
+{
+   if ((ch >= '0') && (ch <= '9')) return (ch - '0');
+   else if ((ch >= 'A') && (ch <= 'F')) return (ch - 'A' + 10);
+   else if ((ch >= 'a') && (ch <= 'f')) return (ch - 'a' + 10);
+   *ok = EINA_FALSE;
+   return 0;
+}
+
+
+static inline Eina_Bool
+_format_color_parse(const char *str, int slen,
+      unsigned char *r, unsigned char *g,
+      unsigned char *b, unsigned char *a)
+{
+   Eina_Bool v = EINA_TRUE;
+
+   *r = *g = *b = *a = 0;
+
+   if (slen == 7) /* #RRGGBB */
+     {
+        *r = (_hex_string_get(str[1], &v) << 4) | (_hex_string_get(str[2], &v));
+        *g = (_hex_string_get(str[3], &v) << 4) | (_hex_string_get(str[4], &v));
+        *b = (_hex_string_get(str[5], &v) << 4) | (_hex_string_get(str[6], &v));
+        *a = 0xff;
+     }
+   else if (slen == 9) /* #RRGGBBAA */
+     {
+        *r = (_hex_string_get(str[1], &v) << 4) | (_hex_string_get(str[2], &v));
+        *g = (_hex_string_get(str[3], &v) << 4) | (_hex_string_get(str[4], &v));
+        *b = (_hex_string_get(str[5], &v) << 4) | (_hex_string_get(str[6], &v));
+        *a = (_hex_string_get(str[7], &v) << 4) | (_hex_string_get(str[8], &v));
+     }
+   else if (slen == 4) /* #RGB */
+     {
+        *r = _hex_string_get(str[1], &v);
+        *r = (*r << 4) | *r;
+        *g = _hex_string_get(str[2], &v);
+        *g = (*g << 4) | *g;
+        *b = _hex_string_get(str[3], &v);
+        *b = (*b << 4) | *b;
+        *a = 0xff;
+     }
+   else if (slen == 5) /* #RGBA */
+     {
+        *r = _hex_string_get(str[1], &v);
+        *r = (*r << 4) | *r;
+        *g = _hex_string_get(str[2], &v);
+        *g = (*g << 4) | *g;
+        *b = _hex_string_get(str[3], &v);
+        *b = (*b << 4) | *b;
+        *a = _hex_string_get(str[4], &v);
+        *a = (*a << 4) | *a;
+     }
+   else v = EINA_FALSE;
+
+   *r = (*r * *a) / 255;
+   *g = (*g * *a) / 255;
+   *b = (*b * *a) / 255;
+   return v;
+}
+
+/**
+  * @internal
+  * Updates the text properties of the object from the theme.
+  * 
+  * This update functions skips any property that was already set,
+  * to allow users to override the theme during the construction of the widget.
+  */
+static void
+_update_text_theme(Eo *obj, Efl_Ui_Text_Data *sd)
+{
+   const char *font_name;
+   const char *font_size;
+   const char *colorcode;
+
+   int font_size_n;
+   unsigned char r, g, b, a;
+
+   ELM_WIDGET_DATA_GET_OR_RETURN(obj, wd);
+
+   // Main Text
+   // font_set
+   font_name = edje_object_data_get(wd->resize_obj, "font.name");
+   font_size = edje_object_data_get(wd->resize_obj, "font.size");
+   font_size_n = font_size ? atoi(font_size) : 0;
+   efl_text_font_set(sd->text_obj, font_name, font_size_n);
+
+   // color
+   colorcode = edje_object_data_get(wd->resize_obj, "style.color");
+   if (colorcode && _format_color_parse(colorcode, strlen(colorcode), &r, &g, &b, &a))
+     {
+        efl_text_normal_color_set(sd->text_obj, r, g, b, a);
+     }
+
+   // Guide Text
+   font_name = edje_object_data_get(wd->resize_obj, "guide.font.name");
+   font_size = edje_object_data_get(wd->resize_obj, "guide.font.size");
+   font_size_n = font_size ? atoi(font_size) : 0;
+   efl_text_font_set(sd->text_guide_obj, font_name, font_size_n);
+
+   // color
+   colorcode = edje_object_data_get(wd->resize_obj, "guide.style.color");
+   if (colorcode && _format_color_parse(colorcode, strlen(colorcode), &r, &g, &b, &a))
+     {
+        efl_text_normal_color_set(sd->text_guide_obj, r, g, b, a);
+     }
+}
+
 EOLIAN static Eo *
 _efl_ui_text_efl_object_constructor(Eo *obj, Efl_Ui_Text_Data *sd)
 {
@@ -1985,16 +2121,18 @@ _efl_ui_text_efl_object_constructor(Eo *obj, Efl_Ui_Text_Data *sd)
 
    text_obj = efl_add(EFL_UI_INTERNAL_TEXT_INTERACTIVE_CLASS, obj);
    sd->text_obj = text_obj;
+   sd->text_guide_obj = efl_add(EFL_CANVAS_TEXT_CLASS, obj);
+   sd->text_table = efl_add(EFL_UI_TABLE_CLASS, obj);
    efl_composite_attach(obj, text_obj);
 
    sd->entry_edje = wd->resize_obj;
-   sd->cnp_mode = EFL_SELECTION_FORMAT_TEXT;
+   sd->cnp_mode = EFL_UI_SELECTION_FORMAT_TEXT;
    sd->line_wrap = ELM_WRAP_WORD;
    sd->context_menu = EINA_TRUE;
    sd->auto_save = EINA_TRUE;
    sd->editable = EINA_TRUE;
    sd->sel_allow = EINA_TRUE;
-   sd->drop_format = EFL_SELECTION_FORMAT_MARKUP | ELM_SEL_FORMAT_IMAGE;
+   sd->drop_format = EFL_UI_SELECTION_FORMAT_MARKUP | ELM_SEL_FORMAT_IMAGE;
    sd->last.scroll = EINA_SIZE2D(0, 0);
    sd->sel_handler_disabled = EINA_TRUE;
 
@@ -2025,16 +2163,21 @@ _efl_ui_text_efl_object_finalize(Eo *obj,
    efl_event_callback_add(obj, EFL_EVENT_CALLBACK_ADD, _cb_added, NULL);
    efl_event_callback_add(obj, EFL_EVENT_CALLBACK_DEL, _cb_deleted, NULL);
 
-   // FIXME: use the theme, when a proper theming option is available
-   //  (possibly, text_classes).
-   // For now, set this for easier setup
-   efl_text_font_set(sd->text_obj, "Sans", 12);
-   efl_text_normal_color_set(sd->text_obj, 255, 255, 255, 255);
+   //TODO: complete the usage of the text theme
+   _update_text_theme(obj, sd);
+   //efl_text_font_set(sd->text_obj, "Sans", 12);
    sd->single_line = !efl_text_multiline_get(sd->text_obj);
 
-   sd->item_fallback_factory = efl_add(EFL_UI_TEXT_FACTORY_FALLBACK_CLASS, obj);
+   efl_pack_table(sd->text_table, sd->text_obj, 0, 0, 1, 1);
+   efl_pack_table(sd->text_table, sd->text_guide_obj, 0, 0, 1, 1);
 
-   edje_object_part_swallow(sd->entry_edje, "efl.text", sd->text_obj);
+   //edje_object_part_swallow(sd->entry_edje, "efl.text", sd->text_obj);
+   //edje_object_part_swallow(sd->entry_edje, "efl.text_guide", sd->text_guide_obj);
+   edje_object_part_swallow(sd->entry_edje, "efl.text", sd->text_table);
+
+   _update_guide_text(obj, sd);
+
+   sd->item_fallback_factory = efl_add(EFL_UI_TEXT_FACTORY_FALLBACK_CLASS, obj);
 
    evas_object_size_hint_weight_set
       (sd->entry_edje, EVAS_HINT_EXPAND, EVAS_HINT_EXPAND);
@@ -2393,25 +2536,25 @@ _efl_ui_text_efl_file_file_get(const Eo *obj EINA_UNUSED, Efl_Ui_Text_Data *sd, 
 }
 
 EOLIAN static void
-_efl_ui_text_cnp_mode_set(Eo *obj, Efl_Ui_Text_Data *sd, Efl_Selection_Format cnp_mode)
+_efl_ui_text_cnp_mode_set(Eo *obj, Efl_Ui_Text_Data *sd, Efl_Ui_Selection_Format cnp_mode)
 {
-   Elm_Sel_Format dnd_format = EFL_SELECTION_FORMAT_MARKUP;
+   Elm_Sel_Format dnd_format = EFL_UI_SELECTION_FORMAT_MARKUP;
 
-   if (cnp_mode != EFL_SELECTION_FORMAT_TARGETS)
+   if (cnp_mode != EFL_UI_SELECTION_FORMAT_TARGETS)
      {
-        if (cnp_mode & EFL_SELECTION_FORMAT_VCARD)
+        if (cnp_mode & EFL_UI_SELECTION_FORMAT_VCARD)
           ERR("VCARD format not supported for copy & paste!");
-        else if (cnp_mode & EFL_SELECTION_FORMAT_HTML)
+        else if (cnp_mode & EFL_UI_SELECTION_FORMAT_HTML)
           ERR("HTML format not supported for copy & paste!");
-        cnp_mode &= ~EFL_SELECTION_FORMAT_VCARD;
-        cnp_mode &= ~EFL_SELECTION_FORMAT_HTML;
+        cnp_mode &= ~EFL_UI_SELECTION_FORMAT_VCARD;
+        cnp_mode &= ~EFL_UI_SELECTION_FORMAT_HTML;
      }
 
    if (sd->cnp_mode == cnp_mode) return;
    sd->cnp_mode = cnp_mode;
-   if (sd->cnp_mode == EFL_SELECTION_FORMAT_TEXT)
-     dnd_format = EFL_SELECTION_FORMAT_TEXT;
-   else if (cnp_mode == EFL_SELECTION_FORMAT_IMAGE)
+   if (sd->cnp_mode == EFL_UI_SELECTION_FORMAT_TEXT)
+     dnd_format = EFL_UI_SELECTION_FORMAT_TEXT;
+   else if (cnp_mode == EFL_UI_SELECTION_FORMAT_IMAGE)
      dnd_format |= ELM_SEL_FORMAT_IMAGE;
 
    elm_drop_target_del(obj, sd->drop_format,
@@ -2427,7 +2570,7 @@ _efl_ui_text_cnp_mode_set(Eo *obj, Efl_Ui_Text_Data *sd, Efl_Selection_Format cn
                        _dnd_drop_cb, NULL);
 }
 
-EOLIAN static Efl_Selection_Format
+EOLIAN static Efl_Ui_Selection_Format
 _efl_ui_text_cnp_mode_get(const Eo *obj EINA_UNUSED, Efl_Ui_Text_Data *sd)
 {
    return sd->cnp_mode;
@@ -2441,14 +2584,12 @@ _efl_ui_text_scrollable_set(Eo *obj EINA_UNUSED, Efl_Ui_Text_Data *sd, Eina_Bool
 
    if (scroll)
      {
-        efl_ref(sd->text_obj);
-        sd->scroller = efl_add(EFL_UI_INTERNAL_TEXT_SCROLLER_CLASS, obj);
-        efl_ui_scrollbar_bar_mode_set(sd->scroller, EFL_UI_SCROLLBAR_MODE_AUTO, EFL_UI_SCROLLBAR_MODE_AUTO);
-        efl_content_set(sd->scroller, sd->text_obj);
-
         edje_object_part_swallow(sd->entry_edje, "efl.text", NULL);
+        sd->scroller = efl_add(EFL_UI_INTERNAL_TEXT_SCROLLER_CLASS, obj,
+              efl_ui_internal_text_scroller_initialize(efl_added,
+                 sd->text_obj, sd->text_table));
+        efl_ui_scrollbar_bar_mode_set(sd->scroller, EFL_UI_SCROLLBAR_MODE_AUTO, EFL_UI_SCROLLBAR_MODE_AUTO);
         edje_object_part_swallow(sd->entry_edje, "efl.text", sd->scroller);
-        efl_ui_internal_text_scroller_text_object_set(sd->scroller, sd->text_obj);
         evas_object_clip_set(sd->cursor,
               efl_ui_internal_text_scroller_viewport_clip_get(sd->scroller));
         efl_event_callback_add(sd->scroller, EFL_GFX_ENTITY_EVENT_RESIZE,
@@ -2457,8 +2598,7 @@ _efl_ui_text_scrollable_set(Eo *obj EINA_UNUSED, Efl_Ui_Text_Data *sd, Eina_Bool
    else
      {
         efl_content_set(sd->scroller, NULL);
-        edje_object_part_swallow(sd->entry_edje, "efl.text", sd->text_obj);
-        efl_unref(sd->text_obj);
+        edje_object_part_swallow(sd->entry_edje, "efl.text", sd->text_table);
         efl_del(sd->scroller);
         sd->scroller = NULL;
      }
@@ -3258,7 +3398,7 @@ _decoration_create(Eo *obj, Efl_Ui_Text_Data *sd,
    evas_object_smart_member_add(ret, sd->entry_edje);
    if (above)
      {
-        evas_object_stack_above(ret, sd->text_obj);
+        evas_object_stack_above(ret, sd->text_table);
      }
    else
      {
@@ -3758,6 +3898,7 @@ _efl_ui_text_changed_cb(void *data, const Efl_Event *event EINA_UNUSED)
    EFL_UI_TEXT_DATA_GET(data, sd);
    sd->text_changed = EINA_TRUE;
    sd->cursor_update = EINA_TRUE;
+   _update_guide_text(data, sd);
    elm_layout_sizing_eval(data);
    _decoration_defer(data);
 }
@@ -3770,6 +3911,7 @@ _efl_ui_text_changed_user_cb(void *data, const Efl_Event *event)
    if (efl_invalidated_get(event->object)) return;
    EFL_UI_TEXT_DATA_GET(obj, sd);
    sd->text_changed = EINA_TRUE;
+   _update_guide_text(data, sd);
    elm_layout_sizing_eval(obj);
    _decoration_defer_all(obj);
 }
@@ -3835,7 +3977,7 @@ _efl_ui_text_selection_changed_cb(void *data, const Efl_Event *event EINA_UNUSED
           }
         _edje_signal_emit(sd, "selection,changed", "efl.text");
         sd->have_selection = EINA_TRUE;
-        _selection_store(EFL_SELECTION_TYPE_PRIMARY, obj);
+        _selection_store(EFL_UI_SELECTION_TYPE_PRIMARY, obj);
      }
    if (text) free(text);
    _selection_defer(obj, sd);
@@ -3862,16 +4004,52 @@ _efl_ui_text_item_factory_get(const Eo *obj EINA_UNUSED, Efl_Ui_Text_Data *pd)
    return pd->item_factory;
 }
 
-#if 0
 /* Efl.Part begin */
 
-ELM_PART_OVERRIDE(elm_entry, EFL_UI_TEXT, Efl_Ui_Text_Data)
-ELM_PART_OVERRIDE_CONTENT_SET(elm_entry, EFL_UI_TEXT, Efl_Ui_Text_Data)
-ELM_PART_OVERRIDE_CONTENT_UNSET(elm_entry, EFL_UI_TEXT, Efl_Ui_Text_Data)
-#include "elm_entry_part.eo.c"
+#define STRCMP(X, Y) strncmp((X), (Y), strlen(X))
+
+EOLIAN static Eina_Bool
+_efl_ui_text_text_set(Eo *obj EINA_UNUSED, Efl_Ui_Text_Data *pd,
+      const char *part, const char *text)
+{
+   if (!STRCMP("efl.text_guide", part))
+     {
+        efl_text_set(pd->text_guide_obj, text);
+        return EINA_TRUE;
+     }
+   else if (!STRCMP("efl.text", part))
+     {
+        efl_text_set(pd->text_obj, text);
+        return EINA_TRUE;
+     }
+
+   return EINA_FALSE;
+}
+
+EOLIAN static const char *
+_efl_ui_text_text_get(Eo *obj EINA_UNUSED, Efl_Ui_Text_Data *pd,
+      const char *part)
+{
+   if (!STRCMP("efl.text_guide", part))
+     {
+        return efl_text_get(pd->text_guide_obj);
+     }
+   else if (!STRCMP("efl.text", part))
+     {
+        return efl_text_get(pd->text_obj);
+     }
+
+   return NULL;
+}
+
+#undef STRCMP
+
+ELM_PART_OVERRIDE(efl_ui_text, EFL_UI_TEXT, Efl_Ui_Text_Data)
+ELM_PART_OVERRIDE_TEXT_SET(efl_ui_text, EFL_UI_TEXT, Efl_Ui_Text_Data)
+ELM_PART_OVERRIDE_TEXT_GET(efl_ui_text, EFL_UI_TEXT, Efl_Ui_Text_Data)
+#include "efl_ui_text_part.eo.c"
 
 /* Efl.Part end */
-#endif
 
 /* Internal EO APIs and hidden overrides */
 
@@ -3895,6 +4073,7 @@ _efl_ui_text_async_efl_object_constructor(Eo *obj, void *_pd EINA_UNUSED)
      elm_widget_theme_klass_set(obj, "text");
    obj = efl_constructor(efl_super(obj, EFL_UI_TEXT_ASYNC_CLASS));
 
+   _update_text_theme(obj, sd);
    return obj;
 }
 

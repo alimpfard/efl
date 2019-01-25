@@ -16,7 +16,7 @@ foreach eo_file : pub_legacy_eo_files
     depfile : eo_file + '.d',
     install : true,
     install_dir : dir_package_include,
-    command : [eolian_gen, '-I', meson.current_source_dir(), eolian_include_directories,
+    command : eolian_gen + [ '-I', meson.current_source_dir(), eolian_include_directories,
                            '-o', 'h:' + join_paths(meson.current_build_dir(), eo_file + '.h'),
                            '-o', 'c:' + join_paths(meson.current_build_dir(), eo_file + '.c'),
                            '-o', 'd:' + join_paths(meson.current_build_dir(), eo_file + '.d'),
@@ -27,7 +27,7 @@ foreach eo_file : pub_legacy_eo_files
     depfile : eo_file + '.legacy.d',
     install : true,
     install_dir : dir_package_include,
-    command : [eolian_gen, '-I', meson.current_source_dir(), eolian_include_directories,
+    command : eolian_gen + [ '-I', meson.current_source_dir(), eolian_include_directories,
                            '-o', 'l:' + join_paths(meson.current_build_dir(), eo_file + '.legacy.h'),
                            '-o', 'd:' + join_paths(meson.current_build_dir(), eo_file + '.legacy.d'),
                            '-gld', '@INPUT@'])
@@ -75,7 +75,8 @@ pub_eo_files = [
   'efl_model_composite_boolean_children.eo',
   'efl_model_composite_selection.eo',
   'efl_model_composite_selection_children.eo',
-  'efl_model_composite.eo'
+  'efl_model_composite.eo',
+  'efl_model_view.eo'
 ]
 
 foreach eo_file : pub_eo_files
@@ -85,7 +86,7 @@ foreach eo_file : pub_eo_files
     depfile : eo_file + '.d',
     install : true,
     install_dir : dir_package_include,
-    command : [eolian_gen, '-I', meson.current_source_dir(), eolian_include_directories,
+    command : eolian_gen + [ '-I', meson.current_source_dir(), eolian_include_directories,
                            '-o', 'h:' + join_paths(meson.current_build_dir(), eo_file + '.h'),
                            '-o', 'c:' + join_paths(meson.current_build_dir(), eo_file + '.c'),
                            '-o', 'd:' + join_paths(meson.current_build_dir(), eo_file + '.d'),
@@ -153,8 +154,10 @@ ecore_src = [
   'efl_model_composite.c',
   'efl_model_composite_boolean.c',
   'efl_model_composite_selection.c',
+  'efl_model_composite_private.h',
   'efl_model_accessor_view.c',
   'efl_model_accessor_view_private.h',
+  'efl_model_view.c',
   'efl_linear_interpolator.c',
   'efl_accelerate_interpolator.c',
   'efl_decelerate_interpolator.c',
@@ -174,16 +177,21 @@ ecore_src = [
   'ecore_exe_private.h',
   'ecore_private.h',
   'ecore_internal.h',
-  'ecore_main_common.h'
+  'ecore_main_common.h',
+  'efl_exe.c',
+  'efl_thread.c',
+  'efl_threadio.c',
+  'efl_appthread.c',
 ]
 
 if sys_windows == true
   #nothing for now ... needs testing
+  ecore_src += ['ecore_exe_win32.c']
 else
   ecore_src += ['ecore_signal.c', 'ecore_exe_posix.c']
 endif
 
-if get_option('glib') == true
+if get_option('glib') == true and sys_windows == false
   ecore_deps += dependency('glib-2.0')
   ecore_deps += dependency('gthread-2.0')
   config_h.set('GLIB_INTEGRATION_ALWAYS', '1')

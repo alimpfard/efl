@@ -21,14 +21,14 @@ function EflIoDirectInfo {
   }
 };
 
-class Efl.Io.Manager (Efl.Loop_Consumer)
+class Efl.Io.Manager extends Efl.Loop_Consumer
 {
   [[Class representing an asynchronous file operation.]]
 
   methods {
     ls @const {
       [[Lists entries in a given path.
-        See \@ref eina_file_ls().
+        See @Eina.File.
       ]]
       params {
         @in path: string; [[Path we want to list entries for]]

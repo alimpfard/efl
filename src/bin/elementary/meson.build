@@ -98,6 +98,9 @@ elementary_test_src = [
   'test_panel.c',
   'test_panes.c',
   'test_ui_panes.c',
+  'test_ui_panel.c',
+  'test_ui_pager.c',
+  'test_ui_pager_scroll.c',
   'test_part_bg.c',
   'test_part_shadow.c',
   'test_photo.c',
@@ -155,6 +158,12 @@ elementary_test_src = [
   'test.h'
 ]
 
+if sys_windows == false
+  link_args = ['-rdynamic', '-fPIC', '-pie']
+  package_c_args =  package_c_args + ['-fPIC']
+else
+  link_args = []
+endif
 elementary_test = executable('elementary_test',
         elementary_test_src,
         dependencies: [elementary] + elementary_deps + elementary_pub_deps,
@@ -164,7 +173,7 @@ elementary_test = executable('elementary_test',
           '-Delementary_test_LIB_DIR="'+dir_lib+'"',
           '-Delementary_test_DATA_DIR="'+join_paths(dir_data,'elementary')+'"'
         ],
-        link_args: '-rdynamic'
+        link_args: link_args
 )
 
 elementary_config_src = [
@@ -176,20 +185,22 @@ elementary_config = executable('elementary_config',
         dependencies: [elementary] + elementary_deps + elementary_pub_deps,
         install: true,
         c_args : package_c_args,
-        link_args: '-rdynamic'
+        link_args: link_args
 )
 
-elementary_quicklaunch_src = [
-   'quicklaunch.c'
-]
+if sys_windows == false
+  elementary_quicklaunch_src = [
+     'quicklaunch.c'
+  ]
 
-elementary_quicklaunch = executable('elementary_quicklaunch',
-        elementary_quicklaunch_src,
-        dependencies: [elementary] + elementary_deps + elementary_pub_deps,
-        install: true,
-        c_args : package_c_args,
-        link_args: '-rdynamic'
-)
+  elementary_quicklaunch = executable('elementary_quicklaunch',
+          elementary_quicklaunch_src,
+          dependencies: [elementary] + elementary_deps + elementary_pub_deps,
+          install: true,
+          c_args : package_c_args,
+          link_args: link_args
+  )
+endif
 
 elementary_codegen_src = [
    'elementary_codegen.c'
@@ -200,7 +211,7 @@ elementary_codegen = executable('elementary_codegen',
         dependencies: [elementary] + elementary_deps + elementary_pub_deps,
         install: true,
         c_args : package_c_args,
-        link_args: '-rdynamic'
+        link_args: link_args
 )
 
 elm_prefs_cc_src = [
@@ -210,7 +221,6 @@ elm_prefs_cc_src = [
    'elm_prefs_cc_out.c',
    'elm_prefs_cc_parse.c',
    'elm_prefs_cc_handlers.c'
-
 ]
 
 elm_prefs_cc = executable('elm_prefs_cc',
@@ -218,17 +228,52 @@ elm_prefs_cc = executable('elm_prefs_cc',
         dependencies: [elementary] + elementary_deps + elementary_pub_deps,
         install: true,
         c_args : package_c_args,
-        link_args: '-rdynamic'
+        link_args: link_args
 )
 
-elementary_run_src = [
-   'run.c'
+if meson.is_cross_build()
+  _elm_prefs_cc = find_program('elm_prefs_cc', native: true)
+  elm_prefs_cc_path = _elm_prefs_cc.path()
+  elm_prefs_cc_exe = [_elm_prefs_cc]
+else
+  env = find_program('env', native: true)
+  elm_prefs_cc_exe = [env, 'EFL_RUN_IN_TREE=1', elm_prefs_cc.full_path()]
+endif
+
+if sys_windows == false
+  elementary_run_src = [
+     'run.c'
+  ]
+
+  elementary_run = executable('elementary_run',
+          elementary_run_src,
+          dependencies: [elementary] + elementary_deps + elementary_pub_deps,
+          install: true,
+          c_args : package_c_args,
+          link_args: link_args
+  )
+endif
+
+elementary_perf_src = [
+   'perf.c',
+   'perf_rnd.c',
+   'perf_test_01.c',
+   'perf_test_02.c',
+   'perf_test_03.c',
+   'perf_test_04.c',
+   'perf_test_05.c',
+   'perf_test_06.c'
 ]
 
-elementary_run = executable('elementary_run',
-        elementary_run_src,
+elementary_perf = executable('elementary_perf',
+        elementary_perf_src,
         dependencies: [elementary] + elementary_deps + elementary_pub_deps,
         install: true,
-        c_args : package_c_args,
-        link_args: '-rdynamic'
+        c_args : package_c_args + [
+          '-Delementary_test_BIN_DIR="'+dir_bin+'"',
+          '-Delementary_test_LIB_DIR="'+dir_lib+'"',
+          '-Delementary_test_DATA_DIR="'+join_paths(dir_data,'elementary')+'"'
+        ],
+        link_args: link_args
 )
+

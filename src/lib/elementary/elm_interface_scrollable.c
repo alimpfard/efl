@@ -95,7 +95,19 @@ static void
 _elm_pan_update(Elm_Pan_Smart_Data *psd)
 {
    if (psd->content)
-     evas_object_move(psd->content, psd->x - psd->px, psd->y - psd->py);
+     {
+        Efl_Ui_Focus_Manager *manager;
+
+        manager = psd->interface_object;
+
+        efl_ui_focus_manager_dirty_logic_freeze(manager);
+        evas_object_move(psd->content, psd->x - psd->px, psd->y - psd->py);
+        efl_ui_focus_manager_dirty_logic_unfreeze(manager);
+        //XXX: hack, right now there is no api in efl_ui_focus_manager_sub.eo to mark it dirty
+        // If we have moved the content, then emit this event, in order to ensure that the focus_manager_sub
+        // logic tries to fetch the viewport again
+        efl_event_callback_call(manager, EFL_UI_FOCUS_MANAGER_EVENT_COORDS_DIRTY, NULL);
+     }
 }
 
 EOLIAN static void
@@ -1764,7 +1776,7 @@ _elm_interface_scrollable_content_pos_set(Eo *obj, Elm_Scrollable_Smart_Interfac
 }
 
 EOLIAN static void
-_elm_interface_scrollable_efl_ui_base_mirrored_set(Eo *obj, Elm_Scrollable_Smart_Interface_Data *sid, Eina_Bool mirrored)
+_elm_interface_scrollable_efl_ui_i18n_mirrored_set(Eo *obj, Elm_Scrollable_Smart_Interface_Data *sid, Eina_Bool mirrored)
 {
    Evas_Coord wx;
 
@@ -2663,7 +2675,7 @@ _elm_scroll_momentum_calc(int dx, int dy, double dt, double *vx, double *vy, int
    fvel_y = vel_y * (1/60.0);
    fvel = vel * (1/60.0);
 
-   if (abs(fvel) < _elm_config->thumbscroll_threshold ) return EINA_FALSE;
+   if (abs((int) fvel) < _elm_config->thumbscroll_threshold ) return EINA_FALSE;
 
    // calculate a number of frames to reach min_px when it follows a geometric sequence with scale factor r
    n = log(min_px/fvel) / log(r);
@@ -4188,6 +4200,8 @@ _elm_interface_scrollable_scrollable_content_set(Eo *obj, Elm_Scrollable_Smart_I
    if (!sid->pan_obj)
      {
         o = _elm_pan_add(evas_object_evas_get(obj));
+        ELM_PAN_DATA_GET_OR_RETURN(o, pd);
+        pd->interface_object = obj;
         sid->pan_obj = o;
         efl_event_callback_add
           (o, ELM_PAN_EVENT_CHANGED, _elm_scroll_pan_changed_cb, sid);

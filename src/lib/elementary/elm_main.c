@@ -41,6 +41,19 @@ Eina_Bool _use_build_config;
 static Elm_Version _version = { VMAJ, VMIN, VMIC, VREV };
 EAPI Elm_Version *elm_version = &_version;
 
+static void
+_focus_ev_redirect_cb(void *data, const Efl_Event *ev EINA_UNUSED)
+{
+   efl_event_callback_call(data, EFL_UI_FOCUS_OBJECT_EVENT_FOCUS_GEOMETRY_CHANGED, NULL);
+}
+
+void
+_efl_ui_focus_event_redirector(Efl_Ui_Focus_Object *obj, Efl_Ui_Focus_Object *goal)
+{
+   efl_event_callback_add(obj, EFL_GFX_ENTITY_EVENT_MOVE, _focus_ev_redirect_cb, goal);
+   efl_event_callback_add(obj, EFL_GFX_ENTITY_EVENT_RESIZE, _focus_ev_redirect_cb, goal);
+}
+
 void
 _efl_ui_focus_manager_redirect_events_del(Efl_Ui_Focus_Manager *manager, Eo *obj)
 {
@@ -48,6 +61,7 @@ _efl_ui_focus_manager_redirect_events_del(Efl_Ui_Focus_Manager *manager, Eo *obj
    efl_event_callback_forwarder_del(manager, EFL_UI_FOCUS_MANAGER_EVENT_REDIRECT_CHANGED, obj);
    efl_event_callback_forwarder_del(manager, EFL_UI_FOCUS_MANAGER_EVENT_FOCUS_CHANGED , obj);
    efl_event_callback_forwarder_del(manager, EFL_UI_FOCUS_MANAGER_EVENT_COORDS_DIRTY, obj);
+   efl_event_callback_forwarder_del(manager, EFL_UI_FOCUS_MANAGER_EVENT_DIRTY_LOGIC_FREEZE_CHANGED, obj);
 }
 
 void
@@ -57,6 +71,7 @@ _efl_ui_focus_manager_redirect_events_add(Efl_Ui_Focus_Manager *manager, Eo *obj
    efl_event_callback_forwarder_add(manager, EFL_UI_FOCUS_MANAGER_EVENT_REDIRECT_CHANGED, obj);
    efl_event_callback_forwarder_add(manager, EFL_UI_FOCUS_MANAGER_EVENT_FOCUS_CHANGED , obj);
    efl_event_callback_forwarder_add(manager, EFL_UI_FOCUS_MANAGER_EVENT_COORDS_DIRTY, obj);
+   efl_event_callback_forwarder_add(manager, EFL_UI_FOCUS_MANAGER_EVENT_DIRTY_LOGIC_FREEZE_CHANGED, obj);
 }
 
 Eina_Bool
@@ -1470,9 +1485,9 @@ elm_object_domain_translatable_part_text_set(Evas_Object *obj, const char *part,
    else
      {
         if (!part)
-           efl_ui_translatable_text_set(obj, text, domain);
+           efl_ui_l10n_text_set(obj, text, domain);
         else
-           efl_ui_translatable_text_set(efl_part(obj, part), text, domain);
+           efl_ui_l10n_text_set(efl_part(obj, part), text, domain);
      }
 }
 
@@ -1492,9 +1507,9 @@ elm_object_translatable_part_text_get(const Evas_Object *obj, const char *part)
    else
      {
         if (!part)
-          return efl_ui_translatable_text_get(obj, NULL);
+          return efl_ui_l10n_text_get(obj, NULL);
         else
-          return efl_ui_translatable_text_get(efl_part(obj, part), NULL);
+          return efl_ui_l10n_text_get(efl_part(obj, part), NULL);
      }
 }
 

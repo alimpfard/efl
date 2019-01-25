@@ -30,6 +30,15 @@ edje_cc = executable('edje_cc',
         link_args : bin_linker_args
 )
 
+if meson.is_cross_build()
+  _edje_cc = find_program('edje_cc', native: true)
+  edje_cc_path = _edje_cc.path()
+  edje_cc_exe = [_edje_cc]
+else
+  env = find_program('env', native: true)
+  edje_cc_exe = [env, 'EFL_RUN_IN_TREE=1', edje_cc.full_path()]
+endif
+
 edje_decc_src = [
   'edje_decc.c',
   'edje_decc.h',
@@ -85,3 +94,6 @@ edje_watch = executable('edje_watch',
         install: true,
         c_args : package_c_args,
 )
+
+install_data('edje_recc', install_dir : dir_bin,
+             install_mode: 'rwxr-xr-x')

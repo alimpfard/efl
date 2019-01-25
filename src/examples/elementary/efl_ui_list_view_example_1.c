@@ -22,7 +22,7 @@ const char *styles[] = {
 char edj_path[PATH_MAX];
 
 static void
-_realized_cb(void *data, const Efl_Event *event)
+_realized_cb(void *data EINA_UNUSED, const Efl_Event *event)
 {
    Efl_Ui_List_View_Item_Event *ie = event->info;
    if (!ie->layout) return;
@@ -69,11 +69,12 @@ _make_model(Evas_Object *win)
 }
 
 EAPI_MAIN int
-elm_main(int argc, char **argv)
+elm_main(int argc EINA_UNUSED, char **argv EINA_UNUSED)
 {
-   Efl_Ui_Layout_Factory *factory;
+   Efl_Ui_Factory *factory;
    Evas_Object *win, *li;
    Eo *model;
+   Efl_Model_Composite_Selection *selmodel;
 
    win = elm_win_util_standard_add("list_view", "List_View");
    elm_policy_set(ELM_POLICY_QUIT, ELM_POLICY_QUIT_LAST_WINDOW_CLOSED);
@@ -81,15 +82,20 @@ elm_main(int argc, char **argv)
    elm_win_autodel_set(win, EINA_TRUE);
 
    model = _make_model(win);
+   selmodel = efl_add(EFL_MODEL_COMPOSITE_SELECTION_CLASS, efl_main_loop_get()
+     , efl_ui_view_model_set(efl_added, model)
+   );
 
    factory = efl_add(EFL_UI_LAYOUT_FACTORY_CLASS, win);
-   efl_ui_model_connect(factory, "signal/elm,state,%v", "odd_style");
+   efl_ui_model_connect(factory, "signal/efl,state,%v", "odd_style");
+   efl_ui_model_connect(factory, "signal/efl,state,%{selected;unselected}", "selected");
    efl_ui_model_connect(factory, "efl.text", "name");
    efl_ui_layout_factory_theme_config(factory, "list_item", NULL, "default");
 
-   li = efl_add(EFL_UI_LIST_VIEW_CLASS, win);
-   efl_ui_list_view_layout_factory_set(li, factory);
-   efl_ui_view_model_set(li, model);
+   li = efl_add(EFL_UI_LIST_VIEW_CLASS, win
+     , efl_ui_list_view_layout_factory_set(efl_added, factory)
+     , efl_ui_view_model_set(efl_added, selmodel)
+   );
 
    efl_event_callback_add(li, EFL_UI_LIST_VIEW_EVENT_ITEM_REALIZED, _realized_cb, NULL);
 //   efl_event_callback_add(li, EFL_UI_LIST_VIEW_EVENT_ITEM_UNREALIZED, _unrealized_cb, NULL);
@@ -104,7 +110,6 @@ elm_main(int argc, char **argv)
    evas_object_show(win);
 
    elm_run();
-   efl_unref(model);
 
    return 0;
 }

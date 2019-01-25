@@ -1550,7 +1550,6 @@ _access_widget_item_register(Elm_Gen_Item *it)
 
    ai = _elm_access_info_get(it->base->access_obj);
 
-   _elm_access_text_set(ai, ELM_ACCESS_TYPE, E_("Gengrid Item"));
    _elm_access_callback_set(ai, ELM_ACCESS_INFO, _access_info_cb, it);
    _elm_access_callback_set(ai, ELM_ACCESS_STATE, _access_state_cb, it);
    _elm_access_on_highlight_hook_set(ai, _access_on_highlight_cb, it);
@@ -4249,17 +4248,71 @@ _elm_gengrid_efl_ui_focus_manager_setup_on_first_touch(Eo *obj, Elm_Gengrid_Data
                elm_gengrid_item_selected_set(eo_it, EINA_TRUE);
              else
                {
-                  ELM_GENGRID_ITEM_DATA_GET(eo_it, pd);
-                  if (pd->realized)
+                  ELM_GENGRID_ITEM_DATA_GET(eo_it, pd_it);
+                  if (pd_it->realized)
                     efl_ui_focus_manager_focus_set(obj, eo_it);
                }
           }
         else
           {
-             //Just set evas focus on the gengrid itself, events will pass on and some element will be taken
-             evas_object_focus_set(obj, EINA_TRUE);
+             efl_ui_focus_object_focus_set(obj, EINA_TRUE);
           }
       }
+}
+
+static Efl_Ui_Focus_Object*
+_select_candidate(Eo *obj, EINA_UNUSED Elm_Gengrid_Data *pd, Efl_Ui_Focus_Direction direction)
+{
+   Elm_Object_Item *first = elm_gengrid_first_item_get(obj);
+   Elm_Object_Item *last = elm_gengrid_last_item_get(obj);
+
+   switch(direction)
+     {
+        case EFL_UI_FOCUS_DIRECTION_DOWN:
+        case EFL_UI_FOCUS_DIRECTION_RIGHT:
+          elm_object_item_focus_set(first, EINA_TRUE);
+          return obj;
+        break;
+        case EFL_UI_FOCUS_DIRECTION_UP:
+        case EFL_UI_FOCUS_DIRECTION_LEFT:
+          elm_object_item_focus_set(last, EINA_TRUE);
+          return obj;
+        break;
+        case EFL_UI_FOCUS_DIRECTION_NEXT:
+        case EFL_UI_FOCUS_DIRECTION_PREVIOUS:
+          //do not go further with logical movement
+          return NULL;
+        break;
+        default:
+          ERR("Uncaught focus direction");
+          return NULL;
+        break;
+     }
+}
+
+EOLIAN static Efl_Ui_Focus_Object*
+_elm_gengrid_efl_ui_focus_manager_move(Eo *obj, Elm_Gengrid_Data *pd, Efl_Ui_Focus_Direction direction)
+{
+   if (efl_ui_focus_manager_focus_get(obj) == obj)
+     {
+        return _select_candidate(obj, pd, direction);
+     }
+   else
+     {
+        return efl_ui_focus_manager_move(efl_super(obj, MY_CLASS), direction);
+     }
+}
+
+EOLIAN static Efl_Ui_Focus_Object*
+_elm_gengrid_efl_ui_focus_manager_manager_focus_get(const Eo *obj, EINA_UNUSED Elm_Gengrid_Data *pd)
+{
+   Eo *focused_obj = efl_ui_focus_manager_focus_get(efl_super(obj, MY_CLASS));
+   Eo *registered_manager = efl_ui_focus_object_focus_manager_get(obj);
+
+   if (!focused_obj && efl_ui_focus_manager_redirect_get(registered_manager))
+     return (Efl_Ui_Focus_Object*) obj;
+
+   return focused_obj;
 }
 
 static void

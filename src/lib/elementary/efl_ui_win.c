@@ -9,7 +9,7 @@
 #define EFL_GFX_SIZE_HINT_PROTECTED
 #define EFL_CANVAS_OBJECT_BETA
 #define EFL_CANVAS_OBJECT_PROTECTED
-#define EFL_UI_TRANSLATABLE_PROTECTED
+#define EFL_UI_L10N_PROTECTED
 #define EFL_UI_WIN_INLINED_PROTECTED
 #define EFL_UI_FOCUS_OBJECT_PROTECTED
 #define EFL_UI_WIN_BETA
@@ -1485,6 +1485,7 @@ _elm_win_profile_update(Efl_Ui_Win_Data *sd)
 
    _config_profile_lock = EINA_TRUE;
    _elm_config_profile_set(sd->profile.name);
+   _config_profile_lock = EINA_FALSE;
 
    /* update sub ee */
    Ecore_Evas *ee2;
@@ -1550,10 +1551,10 @@ _elm_win_frame_obj_update(Efl_Ui_Win_Data *sd, Eina_Bool force)
 
    if (!_elm_win_framespace_set(sd, cx, cy, ow - cw, oh - ch) && (!force)) return;
    _elm_win_frame_geometry_adjust(sd);
-   if (sd->first_draw)
-     evas_object_geometry_get(sd->obj, NULL, NULL, &w, &h);
-   else
-     w = ow, h = oh;
+
+   if (!sd->first_draw) return;
+
+   evas_object_geometry_get(sd->obj, NULL, NULL, &w, &h);
    if (w && h)
      TRAP(sd, resize, w, h);
 }
@@ -1798,7 +1799,7 @@ _evas_event_key_cb(void *data, const Efl_Event *ev)
    if (!evdata || evdata->win_fed)
      return;
 
-   // evas_callbacks will send the event to the focussed object (ie. this win)
+   // evas_callbacks will send the event to the focused object (ie. this win)
    if (evas_focus_get(evas_object_evas_get(win)) == win)
      return;
 
@@ -2984,11 +2985,13 @@ _efl_ui_win_efl_canvas_group_group_del(Eo *obj, Efl_Ui_Win_Data *sd)
 
    efl_canvas_group_del(efl_super(obj, MY_CLASS));
 
-   if ((!_elm_win_list) &&
-       (elm_policy_get(ELM_POLICY_QUIT) == ELM_POLICY_QUIT_LAST_WINDOW_CLOSED))
+   if (!_elm_win_list)
      {
-        _elm_win_flush_cache_and_exit(obj);
+       if (elm_policy_get(ELM_POLICY_QUIT) == ELM_POLICY_QUIT_LAST_WINDOW_CLOSED)
+         _elm_win_flush_cache_and_exit(obj);
      }
+   if (!_elm_win_list)
+     efl_event_callback_call(efl_app_main_get(EFL_APP_CLASS), EFL_APP_EVENT_STANDBY, NULL);
 }
 
 EOLIAN static void
@@ -3563,7 +3566,7 @@ _elm_win_resize_objects_eval(Evas_Object *obj, Eina_Bool force_resize)
    double wx, wy;
 
    evas_object_size_hint_combined_min_get(sd->legacy.edje, &minw, &minh);
-   if ((!minw) && (!minh)) return;
+   if ((!minw) && (!minh) && (!sd->deferred_resize_job)) return;
 
    // If content has a weight, make resizable
    efl_gfx_size_hint_weight_get(sd->legacy.edje, &wx, &wy);
@@ -3608,6 +3611,12 @@ _elm_win_resize_objects_eval(Evas_Object *obj, Eina_Bool force_resize)
    efl_gfx_size_hint_max_set(obj, EINA_SIZE2D(maxw, maxh));
    sd->tmp_updating_hints = 0;
    _elm_win_size_hints_update(obj, sd);
+
+   if (sd->deferred_resize_job)
+     _elm_win_resize_job(sd->obj);
+
+   /* do not need to go below. if you go, ee could become 0. */
+   if ((!minw) && (!minh)) return;
 
    evas_object_geometry_get(obj, NULL, NULL, &ow, &oh);
    w = ow;
@@ -3725,7 +3734,7 @@ _elm_win_translate(void)
    Evas_Object *obj;
 
    EINA_LIST_FOREACH(_elm_win_list, l, obj)
-     efl_ui_translatable_translation_update(obj);
+     efl_ui_l10n_translation_update(obj);
 }
 
 
@@ -4622,7 +4631,8 @@ _elm_win_frame_style_update(Efl_Ui_Win_Data *sd, Eina_Bool force_emit, Eina_Bool
         if (!efl_finalized_get(sd->obj)) return;
         if (EINA_LIKELY(sd->type == ELM_WIN_FAKE))
           return;
-        CRI("Window has no frame object!");
+        if (!_elm_config->win_no_border)
+          CRI("Window has no frame object!");
         return;
      }
 
@@ -4639,6 +4649,8 @@ _elm_win_frame_style_update(Efl_Ui_Win_Data *sd, Eina_Bool force_emit, Eina_Bool
         sd->csd.need_menu = EINA_FALSE;
         sd->csd.need_indicator = EINA_FALSE;
      }
+   else if (_elm_config->win_no_border)
+     sd->csd.need_borderless = EINA_TRUE;
    else
      {
         sd->csd.need_shadow = sd->csd.need && (!sd->maximized);
@@ -4655,11 +4667,18 @@ _elm_win_frame_style_update(Efl_Ui_Win_Data *sd, Eina_Bool force_emit, Eina_Bool
    else
 #endif
    focus = ecore_evas_focus_get(sd->ee);
-   bg_solid = sd->csd.need_bg_solid && (!alpha);
    bg_standard = sd->csd.need_bg_standard;
    unresizable = sd->csd.need_unresizable;
    menu = sd->csd.need_menu;
    indicator = sd->csd.need_indicator;
+   bg_solid = sd->csd.need_bg_solid;
+   /* Set background transparent if window supports alpha.
+    * If alpha window does not emit signal to show background rectangle, then
+    * the background color set by _efl_ui_win_part_color_set cannot be applied
+    * because the background rectangle remains hidden.
+    */
+   if (alpha && bg_solid && !(sd->csd.cur_bg_solid))
+     edje_object_color_class_set(sd->frame_obj, "elm/win/background", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
 
    /* FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME
     * At the moment, E Wayland uses SSD for its internal windows. Which means
@@ -5093,6 +5112,10 @@ _elm_win_finalize_internal(Eo *obj, Efl_Ui_Win_Data *sd, const char *name, Efl_U
         else if ((disp) && (!strcmp(disp, "fb")))
           {
 #ifdef HAVE_ELEMENTARY_DRM
+             if (is_gl_accel)
+               {
+                  enginelist[p++] = ELM_GL_DRM;
+               }
              enginelist[p++] = ELM_DRM;
 #endif
 #ifdef HAVE_ELEMENTARY_FB
@@ -5149,6 +5172,7 @@ _elm_win_finalize_internal(Eo *obj, Efl_Ui_Win_Data *sd, const char *name, Efl_U
                   enginelist[p++] = ELM_WAYLAND_EGL;
 #endif
 #ifdef HAVE_ELEMENTARY_DRM
+                  enginelist[p++] = ELM_GL_DRM;
                   enginelist[p++] = ELM_DRM;
 #endif
 #ifdef HAVE_ELEMENTARY_FB
@@ -5215,6 +5239,7 @@ _elm_win_finalize_internal(Eo *obj, Efl_Ui_Win_Data *sd, const char *name, Efl_U
                   enginelist[p++] = ELM_WAYLAND_EGL;
 #endif
 #ifdef HAVE_ELEMENTARY_DRM
+                  enginelist[p++] = ELM_GL_DRM;
                   enginelist[p++] = ELM_DRM;
 #endif
 #ifdef HAVE_ELEMENTARY_SDL
@@ -5279,6 +5304,8 @@ _elm_win_finalize_internal(Eo *obj, Efl_Ui_Win_Data *sd, const char *name, Efl_U
                tmp_sd.ee = ecore_evas_buffer_new(1, 1);
              else if (!strcmp(enginelist[i], ELM_DRM))
                tmp_sd.ee = ecore_evas_drm_new(NULL, 0, 0, 0, 1, 1);
+             else if (!strcmp(enginelist[i], ELM_GL_DRM))
+               tmp_sd.ee = ecore_evas_gl_drm_new(NULL, 0, 0, 0, 1, 1);
              else if (!strncmp(enginelist[i], "shot:", 5))
                {
                   tmp_sd.ee = ecore_evas_buffer_new(1, 1);
@@ -5524,7 +5551,8 @@ _elm_win_finalize_internal(Eo *obj, Efl_Ui_Win_Data *sd, const char *name, Efl_U
         if ((_elm_config->softcursor_mode == ELM_SOFTCURSOR_MODE_ON) ||
             ((_elm_config->softcursor_mode == ELM_SOFTCURSOR_MODE_AUTO) &&
              ((engine) &&
-              ((!strcmp(engine, ELM_SOFTWARE_FB)) || (!strcmp(engine, ELM_DRM))))))
+              ((!strcmp(engine, ELM_SOFTWARE_FB)) || (!strcmp(engine, ELM_DRM))
+              || (!strcmp(engine, ELM_GL_DRM))))))
           {
              Evas_Object *o;
              Evas_Coord mw = 1, mh = 1, hx = 0, hy = 0;
@@ -5593,7 +5621,8 @@ _elm_win_finalize_internal(Eo *obj, Efl_Ui_Win_Data *sd, const char *name, Efl_U
         _elm_win_count++;
 
         if ((engine) &&
-            ((!strcmp(engine, ELM_SOFTWARE_FB)) || (!strcmp(engine, ELM_DRM))))
+            ((!strcmp(engine, ELM_SOFTWARE_FB)) || (!strcmp(engine, ELM_DRM))
+             || (!strcmp(engine, ELM_GL_DRM))))
           {
              TRAP(sd, fullscreen_set, 1);
           }
@@ -5605,7 +5634,9 @@ _elm_win_finalize_internal(Eo *obj, Efl_Ui_Win_Data *sd, const char *name, Efl_U
            case EFL_UI_WIN_NAVIFRAME_BASIC: element = "naviframe"; break;
            default: break;
           }
-        _elm_win_frame_add(sd, element, style);
+
+        if (!_elm_config->win_no_border)
+          _elm_win_frame_add(sd, element, style);
 
         if (sd->indimode != EFL_UI_WIN_INDICATOR_OFF)
           _indicator_add(sd);
@@ -6074,7 +6105,8 @@ _efl_ui_win_fullscreen_set(Eo *obj EINA_UNUSED, Efl_Ui_Win_Data *sd, Eina_Bool f
    // YYY: handle if sd->img_obj
    if (engine_name &&
        ((!strcmp(engine_name, ELM_SOFTWARE_FB)) ||
-        (!strcmp(engine_name, ELM_DRM))))
+        (!strcmp(engine_name, ELM_DRM)) ||
+        (!strcmp(engine_name, ELM_GL_DRM))))
      {
         // these engines... can ONLY be fullscreen
         return;
@@ -6099,7 +6131,8 @@ _efl_ui_win_fullscreen_get(const Eo *obj EINA_UNUSED, Efl_Ui_Win_Data *sd)
 
    if (engine_name &&
        ((!strcmp(engine_name, ELM_SOFTWARE_FB)) ||
-        (!strcmp(engine_name, ELM_DRM))))
+        (!strcmp(engine_name, ELM_DRM)) ||
+        (!strcmp(engine_name, ELM_GL_DRM))))
      {
         // these engines... can ONLY be fullscreen
         return EINA_TRUE;
@@ -6394,7 +6427,7 @@ _efl_ui_win_efl_gfx_size_hint_hint_weight_set(Eo *obj EINA_UNUSED, Efl_Ui_Win_Da
 }
 
 EOLIAN static void
-_efl_ui_win_efl_gfx_size_hint_hint_base_set(Eo *obj EINA_UNUSED, Efl_Ui_Win_Data *sd, Eina_Size2D sz)
+_efl_ui_win_hint_base_set(Eo *obj EINA_UNUSED, Efl_Ui_Win_Data *sd, Eina_Size2D sz)
 {
    sd->size_base_w = sz.w;
    sd->size_base_h = sz.h;
@@ -6405,13 +6438,13 @@ _efl_ui_win_efl_gfx_size_hint_hint_base_set(Eo *obj EINA_UNUSED, Efl_Ui_Win_Data
 }
 
 EOLIAN static Eina_Size2D
-_efl_ui_win_efl_gfx_size_hint_hint_base_get(const Eo *obj EINA_UNUSED, Efl_Ui_Win_Data *sd)
+_efl_ui_win_hint_base_get(const Eo *obj EINA_UNUSED, Efl_Ui_Win_Data *sd)
 {
    return EINA_SIZE2D(sd->size_base_w, sd->size_base_h);
 }
 
 EOLIAN static void
-_efl_ui_win_efl_gfx_size_hint_hint_step_set(Eo *obj EINA_UNUSED, Efl_Ui_Win_Data *sd, Eina_Size2D sz)
+_efl_ui_win_hint_step_set(Eo *obj EINA_UNUSED, Efl_Ui_Win_Data *sd, Eina_Size2D sz)
 {
    sd->size_step_w = sz.w;
    sd->size_step_h = sz.h;
@@ -6439,7 +6472,7 @@ _efl_ui_win_efl_gfx_size_hint_hint_max_set(Eo *obj, Efl_Ui_Win_Data *sd, Eina_Si
 }
 
 EOLIAN static Eina_Size2D
-_efl_ui_win_efl_gfx_size_hint_hint_step_get(const Eo *obj EINA_UNUSED, Efl_Ui_Win_Data *sd)
+_efl_ui_win_hint_step_get(const Eo *obj EINA_UNUSED, Efl_Ui_Win_Data *sd)
 {
    return EINA_SIZE2D(sd->size_step_w, sd->size_step_h);
 }
@@ -7329,16 +7362,32 @@ _elm_win_bg_set(Efl_Ui_Win_Data *sd, Eo *bg)
      return EINA_FALSE;
    if (elm_widget_is_legacy(sd->obj))
      {
-        if (!edje_object_part_swallow(sd->frame_obj, "elm.swallow.background", bg))
-          return EINA_FALSE;
+        if (!_elm_config->win_no_border)
+          {
+             if (!edje_object_part_swallow(sd->frame_obj, "elm.swallow.background", bg))
+               return EINA_FALSE;
+          }
+        else
+          {
+             if (!edje_object_part_swallow(sd->legacy.edje, "elm.swallow.background", bg))
+               return EINA_FALSE;
+          }
      }
    else
      {
-        if (!edje_object_part_swallow(sd->frame_obj, "efl.background", bg))
-          return EINA_FALSE;
+        if (!_elm_config->win_no_border)
+          {
+             if (!edje_object_part_swallow(sd->frame_obj, "efl.background", bg))
+               return EINA_FALSE;
+          }
+        else
+          {
+             if (!edje_object_part_swallow(sd->legacy.edje, "efl.background", bg))
+               return EINA_FALSE;
+          }
      }
    efl_gfx_entity_visible_set(bg, 1);
-   efl_gfx_size_hint_align_set(bg, -1, -1);
+   efl_gfx_size_hint_fill_set(bg, EINA_TRUE, EINA_TRUE);
    efl_gfx_size_hint_weight_set(bg, 1, 1);
    efl_wref_add(bg, &sd->bg);
    return EINA_TRUE;
@@ -8323,14 +8372,14 @@ elm_win_title_get(const Evas_Object *obj)
 EAPI void
 elm_win_size_base_set(Evas_Object *obj, int w, int h)
 {
-   efl_gfx_size_hint_base_set(obj, EINA_SIZE2D(w, h));
+   efl_ui_win_hint_base_set(obj, EINA_SIZE2D(w, h));
 }
 
 EAPI void
 elm_win_size_base_get(const Evas_Object *obj, int *w, int *h)
 {
    Eina_Size2D sz;
-   sz = efl_gfx_size_hint_base_get(obj);
+   sz = efl_ui_win_hint_base_get(obj);
    if (w) *w = sz.w;
    if (h) *h = sz.h;
 }
@@ -8338,14 +8387,14 @@ elm_win_size_base_get(const Evas_Object *obj, int *w, int *h)
 EAPI void
 elm_win_size_step_set(Evas_Object *obj, int w, int h)
 {
-   efl_gfx_size_hint_step_set(obj, EINA_SIZE2D(w, h));
+   efl_ui_win_hint_step_set(obj, EINA_SIZE2D(w, h));
 }
 
 EAPI void
 elm_win_size_step_get(const Evas_Object *obj, int *w, int *h)
 {
    Eina_Size2D sz;
-   sz = efl_gfx_size_hint_step_get(obj);
+   sz = efl_ui_win_hint_step_get(obj);
    if (w) *w = sz.w;
    if (h) *h = sz.h;
 }

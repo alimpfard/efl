@@ -52,7 +52,6 @@ blacklisted_files = [
   'efl_object_override.eo',
   'elm_web.eo',
   'elm_map.eo',
-  'elm_combobox.eo',
   'elm_list.eo',
   'elm_genlist.eo',
   'elm_view_list.eo',
@@ -66,6 +65,11 @@ efl_mono_lib = library('eflcustomexportsmono',
     install : true,
     dependencies : [eo, eina]
 )
+
+beta_option = []
+if (get_option('mono-beta'))
+   beta_option = '-b'
+endif
 
 mono_generator_target = []
 mono_files = []
@@ -88,7 +92,7 @@ foreach lib : mono_sublibs
           mono_generator_target += custom_target('eolian_mono_gen_'+mono_gen_file.underscorify()+'',
             input : join_paths(subdir_file_location, mono_gen_file),
             output : [mono_gen_file + '.cs'],
-            command : [eolian_mono_gen, '-I', meson.current_source_dir(), eolian_include_directories,
+            command : [eolian_mono_gen, beta_option, '-I', meson.current_source_dir(), eolian_include_directories,
                                        '--dllimport', package_name,
                                        '-o', join_paths(meson.current_build_dir(), mono_gen_file + '.cs'),
                                        '@INPUT@'])
@@ -107,11 +111,24 @@ foreach mono_gen_file : legacy_evas_required_by_mono
   mono_generator_target += custom_target('eolian_mono_gen_'+mono_gen_file.underscorify()+'',
             input : join_paths(subdir_file_location, mono_gen_file),
             output : [mono_gen_file + '.cs'],
-            command : [eolian_mono_gen, '-I', meson.current_source_dir(), eolian_include_directories,
+            command : [eolian_mono_gen, beta_option, '-I', meson.current_source_dir(), eolian_include_directories,
                                        '--dllimport', 'evas',
                                        '-o', join_paths(meson.current_build_dir(), mono_gen_file + '.cs'),
                                        '@INPUT@'])
 endforeach
+
+efl_mono_conf_data = configuration_data()
+efl_mono_conf_data.set('EINA', eina_lib.full_path())
+efl_mono_conf_data.set('EFL', efl_lib.full_path())
+efl_mono_conf_data.set('ECORE', ecore_lib.full_path())
+efl_mono_conf_data.set('EO', eo_lib.full_path())
+efl_mono_conf_data.set('EVAS', evas_lib.full_path())
+efl_mono_conf_data.set('ELDBUS', eldbus_lib.full_path())
+efl_mono_conf_data.set('ELEMENTARY', elementary_lib.full_path())
+
+configure_file(input : 'efl_mono.dll.config.in',
+               output : 'efl_mono.dll.config',
+               configuration : efl_mono_conf_data)
 
 efl_mono = library('efl_mono',
     mono_generator_target + mono_files + [efl_src],
@@ -124,7 +141,7 @@ efl_mono_test_suite_path=join_paths(meson.current_build_dir())
 pkgconfig.generate(
   name : 'efl-mono',
   description : 'Efl C# bindings',
-  version : version_major + '.' + version_minor,
+  version : version_major + '.' + version_minor + '.' + version_micro,
   libraries : ['-r:${assemblies_dir}/efl_mono.dll'],
   variables : ['assemblies_dir='+join_paths(dir_lib, 'efl-mono-'+version_major),
                'mono_libs=-r:${assemblies_dir}/efl_mono.dll']

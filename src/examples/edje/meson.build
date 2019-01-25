@@ -62,7 +62,7 @@ foreach edc_file : edc_files
    themes += custom_target('edje_cc_' + edc_file,
     input : edc_file,
     output : '@BASENAME@.edj',
-    command : ['/usr/bin/env', 'EFL_RUN_IN_TREE=1', edje_cc.full_path(), '-beta',
+    command : edje_cc_exe + [ '-beta', '-fastcomp',
               '-id', meson.current_source_dir(),
               '-fd', meson.current_source_dir(),
               '-sd', meson.current_source_dir(),
@@ -77,7 +77,7 @@ endforeach
 codegen = custom_target('edje_cc_codegen_edc',
   input : 'codegen.edc',
   output : '@BASENAME@.edj',
-  command : ['/usr/bin/env', 'EFL_RUN_IN_TREE=1', edje_cc.full_path(), '-beta',
+  command : edje_cc_exe + [ '-beta', '-fastcomp',
             '-id', meson.current_source_dir(),
             '-fd', meson.current_source_dir(),
             '-sd', meson.current_source_dir(),
@@ -131,5 +131,6 @@ foreach edje_example : edje_examples
   executable(edje_example,
     [edje_example + '.c'] +  themes,
     dependencies: [edje, ecore_evas],
+    c_args: ['-DPACKAGE_DATA_DIR="'+ meson.current_build_dir()+'"',]
   )
 endforeach

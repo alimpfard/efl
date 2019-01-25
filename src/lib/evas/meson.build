@@ -30,7 +30,7 @@ foreach eo_file : pub_legacy_eo_files
     depfile : eo_file + '.d',
     install : true,
     install_dir : dir_package_include,
-    command : [eolian_gen, '-I', meson.current_source_dir(), eolian_include_directories,
+    command : eolian_gen + [ '-I', meson.current_source_dir(), eolian_include_directories,
                            '-o', 'h:' + join_paths(meson.current_build_dir(), eo_file + '.h'),
                            '-o', 'c:' + join_paths(meson.current_build_dir(), eo_file + '.c'),
                            '-o', 'd:' + join_paths(meson.current_build_dir(), eo_file + '.d'),
@@ -41,7 +41,7 @@ foreach eo_file : pub_legacy_eo_files
     depfile : eo_file + '.legacy.d',
     install : true,
     install_dir : dir_package_include,
-    command : [eolian_gen, '-I', meson.current_source_dir(), eolian_include_directories,
+    command : eolian_gen + [ '-I', meson.current_source_dir(), eolian_include_directories,
                            '-o', 'l:' + join_paths(meson.current_build_dir(), eo_file + '.legacy.h'),
                            '-o', 'd:' + join_paths(meson.current_build_dir(), eo_file + '.legacy.d'),
                            '-gld', '@INPUT@'])
@@ -58,7 +58,7 @@ foreach eo_file : pub_eo_files
     depfile : eo_file + '.d',
     install : true,
     install_dir : dir_package_include,
-    command : [eolian_gen, '-I', meson.current_source_dir(), eolian_include_directories,
+    command : eolian_gen + [ '-I', meson.current_source_dir(), eolian_include_directories,
                            '-o', 'h:' + join_paths(meson.current_build_dir(), eo_file + '.h'),
                            '-o', 'c:' + join_paths(meson.current_build_dir(), eo_file + '.c'),
                            '-o', 'd:' + join_paths(meson.current_build_dir(), eo_file + '.d'),
@@ -77,7 +77,7 @@ foreach eo_file : pub_eo_types_files
     depfile : eo_file + '.d',
     install : true,
     install_dir : dir_package_include,
-    command : [eolian_gen, '-I', meson.current_source_dir(), eolian_include_directories,
+    command : eolian_gen + [ '-I', meson.current_source_dir(), eolian_include_directories,
                            '-o', 'h:' + join_paths(meson.current_build_dir(), eo_file + '.h'),
                            '-o', 'd:' + join_paths(meson.current_build_dir(), eo_file + '.d'),
                            '-ghd', '@INPUT@'])
@@ -139,7 +139,7 @@ if (get_option('hyphen'))
      evas_deps += cc.find_library('hyphen')
    endif
    evas_deps += hyphen
-   config_h.set_quoted('EVAS_DICTS_HYPHEN_DIR', '/usr/share/hyphen')
+   config_h.set_quoted('EVAS_DICTS_HYPHEN_DIR', get_option('dictionaries-hyphen-dir'))
 endif
 
 subdir('include')
@@ -165,12 +165,13 @@ endif
 
 
 if get_option('opengl') != 'none'
-  gl_deps += dependency('gl')
-endif
-
-if get_option('opengl') == 'es-egl'
-  config_h.set('GL_GLES', '1')
-  gl_deps += dependency('egl')
+  if get_option('opengl') == 'es-egl'
+    config_h.set('GL_GLES', '1')
+    gl_deps += dependency('glesv2')
+    gl_deps += dependency('egl')
+  else
+    gl_deps += dependency('gl')
+  endif
 endif
 
 evas_pre = declare_dependency(

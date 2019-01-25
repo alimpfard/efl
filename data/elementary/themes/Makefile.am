@@ -6,7 +6,7 @@ EDJE_CC_ELM_FLAGS = \
 -sd $(top_srcdir)/data/elementary/themes/snd \
 -l $(top_srcdir)/COPYING \
 -a $(top_srcdir)/AUTHORS \
--fastdecomp
+-fastcomp
 
 
 elementary_themes_files = \
@@ -1026,6 +1026,7 @@ elementary/themes/edc/efl/grid.edc \
 elementary/themes/edc/efl/navigation_bar.edc \
 elementary/themes/edc/efl/navigation_layout.edc \
 elementary/themes/edc/efl/tags.edc \
+elementary/themes/edc/efl/panel.edc \
 elementary/themes/edc/efl/nstate.edc \
 elementary/themes/edc/efl/panes.edc \
 elementary/themes/edc/efl/photocam.edc \

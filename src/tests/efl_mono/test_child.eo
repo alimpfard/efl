@@ -1,9 +1,0 @@
-import eina_types;
-
-class Test.Child extends Test.Testing {
-
-   implements {
-      class.constructor;
-      class.destructor;
-   }
-}

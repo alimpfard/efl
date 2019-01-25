@@ -635,6 +635,11 @@ _eina_promise_clean_dispatch(Eina_Promise *p, Eina_Value v)
         // This function is called on a promise created with a scheduler, not a continue one.
         _eina_future_dispatch(p->scheduler, f, v);
      }
+   else
+     {
+        // Nobody is going to flush this value if we don't
+        eina_value_flush(&v);
+     }
    eina_mempool_free(_promise_mp, p);
 }
 
@@ -1096,22 +1101,6 @@ eina_future_cb_convert_to(const Eina_Value_Type *type)
    return (Eina_Future_Desc){.cb = _eina_future_cb_convert_to, .data = type};
 }
 
-EAPI void *
-eina_promise_data_get(const Eina_Promise *p)
-{
-   EINA_SAFETY_ON_NULL_RETURN_VAL(p, NULL);
-   return (void *)p->data;
-}
-
-EAPI void
-eina_promise_data_set(Eina_Promise *p,
-                      void *data)
-{
-   EINA_SAFETY_ON_NULL_RETURN(p);
-   p->data = data;
-}
-
-
 static Eina_Value
 _eina_future_cb_easy(void *data, const Eina_Value value,
                      const Eina_Future *dead_future)
@@ -1393,7 +1382,7 @@ static Eina_Value
 _eina_future_cb_ignore_error(void *data, const Eina_Value value,
                              const Eina_Future *dead_future EINA_UNUSED)
 {
-   Eina_Error expected_err = (Eina_Error)(long)data;
+   Eina_Error expected_err = (Eina_Error)(intptr_t)data;
 
    if (value.type == EINA_VALUE_TYPE_ERROR)
      {
@@ -1411,7 +1400,7 @@ _eina_future_cb_ignore_error(void *data, const Eina_Value value,
 EAPI Eina_Future_Desc
 eina_future_cb_ignore_error(Eina_Error err)
 {
-   return (Eina_Future_Desc){ _eina_future_cb_ignore_error, (void *)(long)err, NULL };
+   return (Eina_Future_Desc){ _eina_future_cb_ignore_error, (void*)(uintptr_t)err, NULL };
 }
 
 EAPI void

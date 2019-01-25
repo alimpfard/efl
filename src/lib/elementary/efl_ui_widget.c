@@ -8,7 +8,7 @@
 #define ELM_WIDGET_ITEM_PROTECTED
 #define EFL_CANVAS_OBJECT_BETA
 #define EFL_INPUT_EVENT_PROTECTED
-#define EFL_UI_TRANSLATABLE_PROTECTED
+#define EFL_UI_L10N_PROTECTED
 #define EFL_UI_FOCUS_OBJECT_PROTECTED
 #define EFL_UI_WIDGET_PART_BG_PROTECTED
 #define EFL_PART_PROTECTED
@@ -19,7 +19,7 @@
 #include "elm_widget_container.h"
 #include "elm_interface_scrollable.h"
 #include "elm_part_helper.h"
-#include "elm_combobox.eo.h"
+#include "elm_widget_combobox.h"
 
 /* FIXME: remove this when we don't rely on evas event structs anymore */
 #define EFL_INTERNAL_UNSTABLE
@@ -1355,7 +1355,7 @@ _efl_ui_widget_theme_apply(Eo *obj, Elm_Widget_Smart_Data *_pd EINA_UNUSED)
  *
  **/
 EOLIAN static Eina_Bool
-_efl_ui_widget_efl_ui_base_mirrored_get(const Eo *obj EINA_UNUSED, Elm_Widget_Smart_Data *sd)
+_efl_ui_widget_efl_ui_i18n_mirrored_get(const Eo *obj EINA_UNUSED, Elm_Widget_Smart_Data *sd)
 {
    return sd->is_mirrored;
 }
@@ -1369,7 +1369,7 @@ _efl_ui_widget_efl_ui_base_mirrored_get(const Eo *obj EINA_UNUSED, Elm_Widget_Sm
  * @param mirrored EINA_TRUE to set mirrored mode. EINA_FALSE to unset.
  */
 EOLIAN static void
-_efl_ui_widget_efl_ui_base_mirrored_set(Eo *obj, Elm_Widget_Smart_Data *sd, Eina_Bool mirrored)
+_efl_ui_widget_efl_ui_i18n_mirrored_set(Eo *obj, Elm_Widget_Smart_Data *sd, Eina_Bool mirrored)
 {
    mirrored = !!mirrored;
 
@@ -1387,7 +1387,7 @@ _efl_ui_widget_efl_ui_base_mirrored_set(Eo *obj, Elm_Widget_Smart_Data *sd, Eina
  *
  **/
 EOLIAN static Eina_Bool
-_efl_ui_widget_efl_ui_base_mirrored_automatic_get(const Eo *obj EINA_UNUSED, Elm_Widget_Smart_Data *sd)
+_efl_ui_widget_efl_ui_i18n_mirrored_automatic_get(const Eo *obj EINA_UNUSED, Elm_Widget_Smart_Data *sd)
 {
    return sd->mirrored_auto_mode;
 }
@@ -1402,7 +1402,7 @@ _efl_ui_widget_efl_ui_base_mirrored_automatic_get(const Eo *obj EINA_UNUSED, Elm
  * @param automatic EINA_TRUE for auto mirrored mode. EINA_FALSE for manual.
  */
 EOLIAN static void
-_efl_ui_widget_efl_ui_base_mirrored_automatic_set(Eo *obj, Elm_Widget_Smart_Data *sd, Eina_Bool automatic)
+_efl_ui_widget_efl_ui_i18n_mirrored_automatic_set(Eo *obj, Elm_Widget_Smart_Data *sd, Eina_Bool automatic)
 {
    if (sd->mirrored_auto_mode != automatic)
      {
@@ -1469,24 +1469,26 @@ EOLIAN static Eina_Bool
 _efl_ui_widget_widget_sub_object_add(Eo *obj, Elm_Widget_Smart_Data *sd, Evas_Object *sobj)
 {
    Eina_Bool mirrored, pmirrored = efl_ui_mirrored_get(obj);
+   Elm_Widget_Smart_Data *sdc = NULL;
 
    EINA_SAFETY_ON_TRUE_RETURN_VAL(obj == sobj, EINA_FALSE);
+
+   if (_elm_widget_is(sobj))
+     sdc = efl_data_scope_get(sobj, MY_CLASS);
 
    if (sobj == sd->parent_obj)
      {
         /* in this case, sobj must be an elm widget, or something
          * very wrong is happening */
-        if (!_elm_widget_is(sobj)) return EINA_FALSE;
+        if (!sdc) return EINA_FALSE;
 
         if (!elm_widget_sub_object_del(sobj, obj)) return EINA_FALSE;
         WRN("You passed a parent object of obj = %p as the sub object = %p!",
             obj, sobj);
      }
 
-   if (_elm_widget_is(sobj))
+   if (sdc)
      {
-        ELM_WIDGET_DATA_GET(sobj, sdc);
-
         if (sdc->parent_obj == obj) goto end;
         if (sdc->parent_obj)
           {
@@ -1543,10 +1545,8 @@ _efl_ui_widget_widget_sub_object_add(Eo *obj, Elm_Widget_Smart_Data *sd, Evas_Ob
    evas_object_data_set(sobj, "elm-parent", obj);
 
    _callbacks_add(sobj, obj);
-   if (_elm_widget_is(sobj))
+   if (sdc)
      {
-        ELM_WIDGET_DATA_GET(sobj, sdc);
-
         /* NOTE: In the following two lines, 'sobj' is correct. Do not change it.
          * Due to elementary's scale policy, scale and pscale can be different in
          * some cases. This happens when sobj's previous parent and new parent have
@@ -2547,9 +2547,19 @@ _efl_ui_widget_show_region_set(Eo *obj, Elm_Widget_Smart_Data *sd, Eina_Rect sr,
 
         if (_elm_scrollable_is(obj))
           {
-             elm_interface_scrollable_content_pos_get(obj, &nx, &ny);
-             sr.x -= nx;
-             sr.y -= ny;
+             if (elm_widget_is_legacy(obj))
+               {
+                  elm_interface_scrollable_content_pos_get(obj, &nx, &ny);
+                  sr.x -= nx;
+                  sr.y -= ny;
+               }
+             else
+               {
+                  Eina_Position2D pos;
+                  pos = efl_ui_scrollable_content_pos_get(obj);
+                  sr.x -= pos.x;
+                  sr.y -= pos.y;
+               }
           }
      }
 
@@ -2968,7 +2978,7 @@ elm_widget_part_translatable_text_get(const Eo *obj, const char *part, const cha
 }
 
 EOLIAN static void
-_efl_ui_widget_efl_ui_translatable_translation_update(Eo *obj EINA_UNUSED, Elm_Widget_Smart_Data *sd)
+_efl_ui_widget_efl_ui_l10n_translation_update(Eo *obj EINA_UNUSED, Elm_Widget_Smart_Data *sd)
 {
    const Eina_List *l;
    Evas_Object *child;
@@ -2976,10 +2986,10 @@ _efl_ui_widget_efl_ui_translatable_translation_update(Eo *obj EINA_UNUSED, Elm_W
    EINA_LIST_FOREACH(sd->subobjs, l, child)
      {
         if (elm_widget_is(child))
-          efl_ui_translatable_translation_update(child);
+          efl_ui_l10n_translation_update(child);
      }
 
-   if (sd->hover_obj) efl_ui_translatable_translation_update(sd->hover_obj);
+   if (sd->hover_obj) efl_ui_l10n_translation_update(sd->hover_obj);
 
 #ifdef HAVE_GETTEXT
    Elm_Translate_String_Data *ts;
@@ -5323,6 +5333,7 @@ _efl_ui_widget_efl_object_constructor(Eo *obj, Elm_Widget_Smart_Data *sd EINA_UN
    Eo *parent = NULL;
 
    sd->on_create = EINA_TRUE;
+   _efl_ui_focus_event_redirector(obj, obj);
    efl_canvas_group_clipped_set(obj, EINA_FALSE);
    obj = efl_constructor(efl_super(obj, MY_CLASS));
    efl_canvas_object_type_set(obj, MY_CLASS_NAME_LEGACY);
@@ -6147,4 +6158,4 @@ ELM_PART_TEXT_DEFAULT_GET(efl_ui_widget, NULL)
 #include "efl_ui_widget.eo.c"
 
 /* Others */
-#include "efl_ui_translatable.eo.c"
+#include "efl_ui_l10n.eo.c"

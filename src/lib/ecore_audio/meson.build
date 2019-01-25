@@ -19,7 +19,7 @@ foreach eo_file : pub_eo_files
     depfile : eo_file + '.d',
     install : true,
     install_dir : dir_package_include,
-    command : [eolian_gen, '-I', meson.current_source_dir(), eolian_include_directories,
+    command : eolian_gen + [ '-I', meson.current_source_dir(), eolian_include_directories,
                            '-o', 'h:' + join_paths(meson.current_build_dir(), eo_file + '.h'),
                            '-o', 'c:' + join_paths(meson.current_build_dir(), eo_file + '.c'),
                            '-o', 'd:' + join_paths(meson.current_build_dir(), eo_file + '.d'),
@@ -68,6 +68,13 @@ if get_option('pulseaudio')
   ]
 
   config_h.set('HAVE_PULSE', '1')
+endif
+
+if sys_windows == true
+  ecore_audio_src += [
+    'ecore_audio_obj_out_wasapi.c'
+  ]
+  ecore_audio_deps += [cc.find_library('ksuser', required: true), cc.find_library('winmm', required: true)]
 endif
 
 ecore_audio_lib = library('ecore_audio',

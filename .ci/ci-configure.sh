@@ -7,7 +7,7 @@ set -e
 if [ "$BUILDSYSTEM" = "ninja" ] ; then
   if [ "$DISTRO" != "" ] ; then
     # Normal build test of all targets
-    OPTS=" -Decore-imf-loaders-disabler=scim,ibus -Davahi=false -Dmono=false -Dcxx=false"
+    OPTS=" -Decore-imf-loaders-disabler=scim,ibus -Davahi=false -Dbindings=luajit"
 
     WAYLAND_LINUX_COPTS=" -Dwl=true -Ddrm=true -Dopengl=es-egl"
 
@@ -23,6 +23,10 @@ if [ "$BUILDSYSTEM" = "ninja" ] ; then
 
     if [ "$1" = "options-disabled" ]; then
       OPTS="$OPTS $DISABLED_LINUX_COPTS"
+    fi
+
+    if [ "$1" = "wayland" ]; then
+      OPTS="$OPTS $WAYLAND_LINUX_COPTS"
     fi
 
     if [ "$1" = "release-ready" ]; then
@@ -41,7 +45,7 @@ if [ "$BUILDSYSTEM" = "ninja" ] ; then
     export CFLAGS="-I/usr/local/opt/openssl/include -frewrite-includes $CFLAGS"
     export LDFLAGS="-L/usr/local/opt/openssl/lib $LDFLAGS"
     export PKG_CONFIG_PATH="/usr/local/opt/openssl/lib/pkgconfig"
-    mkdir build && meson build -Decore-imf-loaders-disabler=scim,ibus -Dx11=false -Davahi=false -Dmono=false -Dcxx=false -Deeze=false -Dsystemd=false -Dnls=false -Dcocoa=true -Demotion-loaders-disabler=gstreamer,gstreamer1,libvlc,xine
+    mkdir build && meson build -Decore-imf-loaders-disabler=scim,ibus -Dx11=false -Davahi=false -Dbindings=luajit -Deeze=false -Dsystemd=false -Dnls=false -Dcocoa=true -Demotion-loaders-disabler=gstreamer,gstreamer1,libvlc,xine
   fi
 else
   CI_BUILD_TYPE="$1"
@@ -73,12 +77,12 @@ else
 
   RELEASE_READY_LINUX_COPTS=" --with-profile=release"
 
-  MINGW_COPTS=" --prefix=/root/EFL/ewpi_64 --host=x86_64-w64-mingw32 --with-eolian-gen=/usr/bin/eolian_gen \
-  --with-edje-cc=/usr/bin/edje_cc --with-eet-eet=/usr/bin/eet --with-bin-elm-prefs-cc=/usr/bin/elm_prefs_cc \
-  --disable-static --with-tests=regular --with-crypto=openssl --disable-gstreamer1 \
+  MINGW_COPTS=" --prefix=/root/EFL/ewpi_64 --host=x86_64-w64-mingw32 --with-eolian-gen=/usr/local/bin/eolian_gen \
+  --with-edje-cc=/usr/local/bin/edje_cc --with-eet-eet=/usr/local/bin/eet \
+  --with-bin-elm-prefs-cc=/usr/local/bin/elm_prefs_cc \
+  --disable-static --with-tests=regular --with-crypto=openssl \
   --disable-libmount --disable-valgrind --disable-avahi --disable-spectre --disable-libraw \
-  --disable-librsvg --disable-pulseaudio --disable-cxx-bindings \
-  --disable-physics --disable-image-loader-tiff"
+  --disable-librsvg --disable-pulseaudio --disable-cxx-bindings"
 
   patch -p1 < .ci/efl.m4.diff
   sed -i.orig 's/AC_INIT\(.*\)efl_version-[a-zA-Z0-9]\+/AC_INIT\1efl_version/g' configure.ac
@@ -93,6 +97,10 @@ else
 
     if [ "$1" = "options-disabled" ]; then
       OPTS="$OPTS $DISABLED_LINUX_COPTS"
+    fi
+
+    if [ "$1" = "wayland" ]; then
+      OPTS="$OPTS $WAYLAND_LINUX_COPTS"
     fi
 
     if [ "$1" = "release-ready" ]; then

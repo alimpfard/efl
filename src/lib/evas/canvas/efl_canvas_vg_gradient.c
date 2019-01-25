@@ -23,7 +23,7 @@ _efl_canvas_vg_gradient_efl_gfx_gradient_stop_set(Eo *obj EINA_UNUSED,
    memcpy(pd->colors, colors, length * sizeof(Efl_Gfx_Gradient_Stop));
    pd->colors_count = length;
 
-   _efl_canvas_vg_node_changed(obj);
+   efl_canvas_vg_node_change(obj);
 }
 
 static void
@@ -39,18 +39,18 @@ _efl_canvas_vg_gradient_efl_gfx_gradient_stop_get(const Eo *obj EINA_UNUSED,
 static void
 _efl_canvas_vg_gradient_efl_gfx_gradient_spread_set(Eo *obj EINA_UNUSED,
                                                   Efl_Canvas_Vg_Gradient_Data *pd,
-                                                  Efl_Gfx_Gradient_Spread s)
+                                                  Efl_Gfx_Gradient_Spread spread)
 {
-   pd->s = s;
+   pd->spread = spread;
 
-   _efl_canvas_vg_node_changed(obj);
+   efl_canvas_vg_node_change(obj);
 }
 
 static Efl_Gfx_Gradient_Spread
 _efl_canvas_vg_gradient_efl_gfx_gradient_spread_get(const Eo *obj EINA_UNUSED,
                                                   Efl_Canvas_Vg_Gradient_Data *pd)
 {
-   return pd->s;
+   return pd->spread;
 }
 
 static Eina_Bool
@@ -113,7 +113,7 @@ _efl_canvas_vg_gradient_efl_duplicate_duplicate(const Eo *obj, Efl_Canvas_Vg_Gra
 
    cn = efl_duplicate(efl_super(obj, MY_CLASS));
    efl_gfx_gradient_stop_set(cn, pd->colors, pd->colors_count);
-   efl_gfx_gradient_spread_set(cn, pd->s);
+   efl_gfx_gradient_spread_set(cn, pd->spread);
    return cn;
 }
 

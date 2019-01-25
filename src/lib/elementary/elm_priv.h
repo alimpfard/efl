@@ -67,7 +67,7 @@
 # include "efl_ui_widget_focus_manager.eo.h"
 # include "efl_ui_focus_parent_provider_standard.eo.h"
 # include "elm_widget_item_static_focus.eo.h"
-#include "efl_selection_manager.eo.h"
+#include "efl_ui_selection_manager.eo.h"
 # include "efl_datetime_manager.eo.h"
 
 # ifdef HAVE_LANGINFO_H
@@ -166,7 +166,7 @@ struct _Efl_Ui_Theme_Data
  * the users config doesn't need to be wiped - simply new values need
  * to be put in
  */
-# define ELM_CONFIG_FILE_GENERATION 0x0012
+# define ELM_CONFIG_FILE_GENERATION 0x0014
 # define ELM_CONFIG_VERSION_EPOCH_OFFSET 16
 # define ELM_CONFIG_VERSION         ((ELM_CONFIG_EPOCH << ELM_CONFIG_VERSION_EPOCH_OFFSET) | \
                                      ELM_CONFIG_FILE_GENERATION)
@@ -190,6 +190,7 @@ extern const char *_elm_engines[];
 # define ELM_WAYLAND_EGL       (_elm_engines[10])
 # define ELM_DRM               (_elm_engines[11])
 # define ELM_SOFTWARE_DDRAW    (_elm_engines[12])
+# define ELM_GL_DRM            (_elm_engines[13])
 
 # define ELM_FONT_TOKEN_STYLE  ":style="
 
@@ -353,6 +354,7 @@ struct _Elm_Config_Flags
    Eina_Bool icon_theme : 1;
    Eina_Bool entry_select_allow : 1; // unused
    Eina_Bool drag_anim_duration : 1;
+   Eina_Bool win_no_border : 1;
 };
 
 struct _Elm_Config
@@ -498,6 +500,7 @@ struct _Elm_Config
    Eina_Bool     offline;
    int  powersave;
    double        drag_anim_duration;
+   unsigned char win_no_border;
 
    /* Not part of the EET file */
    Eina_Bool     is_mirrored : 1;
@@ -630,7 +633,7 @@ void                 _elm_config_sub_init(void);
 void                 _elm_config_shutdown(void);
 void                 _elm_config_sub_shutdown(void);
 Eina_Bool            _elm_config_save(Elm_Config *cfg, const char *profile);
-void                 _elm_config_reload(void);
+void                 _elm_config_reload(Eina_Bool on_flush);
 size_t               _elm_config_user_dir_snprintf(char *dst, size_t size,
                                                    const char *fmt, ...)
                                                    EINA_PRINTF(3, 4);
@@ -772,10 +775,11 @@ EOAPI void			 efl_page_transition_padding_size_set(Eo *obj, int padding);
 EOAPI void			 efl_page_transition_update(Eo *obj, double pos);
 EOAPI void			 efl_page_transition_curr_page_change(Eo *obj, double move);
 EOAPI void			 efl_page_transition_pack_end(Eo *obj, Efl_Gfx_Entity *subobj);
-EOAPI void			 efl_page_transition_loop_set(Eo *obj, Efl_Ui_Pager_Loop loop);
+EOAPI Eina_Bool		 efl_page_transition_loop_set(Eo *obj, Efl_Ui_Pager_Loop loop);
 
 EOAPI void			 efl_page_indicator_update(Eo *obj, double pos);
 EOAPI void			 efl_page_indicator_pack(Eo *obj, int index);
+EOAPI void			 efl_page_indicator_unpack(Eo *obj, int index);
 
 Eina_Bool _elm_config_accel_preference_parse(const char *pref, Eina_Stringshare **accel, int *gl_depth, int *gl_stencil, int *gl_msaa);
 
@@ -908,5 +912,7 @@ void legacy_child_focus_handle(Efl_Ui_Focus_Object *object);
  * Once the passed object is getting focus, "focused" will be emitted on the object, "unfocused" otherwise.
  */
 void legacy_object_focus_handle(Efl_Ui_Focus_Object *object);
+
+void _efl_ui_focus_event_redirector(Efl_Ui_Focus_Object *obj, Efl_Ui_Focus_Object *goal);
 
 #endif

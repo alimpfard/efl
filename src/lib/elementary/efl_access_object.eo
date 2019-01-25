@@ -225,7 +225,7 @@ struct Efl.Access.Event.Children_Changed.Data
    child: Efl.Object; [[Child object]]
 }
 
-struct Efl.Access.Attribute
+struct @free(efl_access_attribute_free) Efl.Access.Attribute
 {
    [[Accessibility Attribute]]
    key: string; [[Attribute key]]
@@ -239,7 +239,7 @@ struct Efl.Access.Relation
    objects: list<Efl.Object>; [[List with relation objects]]
 }
 
-mixin Efl.Access.Object (Efl.Interface, Efl.Object)
+mixin Efl.Access.Object requires Efl.Object
 {
    [[Accessibility accessible mixin]]
    eo_prefix: efl_access_object;
@@ -310,10 +310,7 @@ mixin Efl.Access.Object (Efl.Interface, Efl.Object)
          }
       }
       attributes_clear {
-         [[Removes all attributes in accessible object.
-
-           \@internal
-         ]]
+         [[Removes all attributes in accessible object.]]
       }
       @property reading_info_type @protected {
          get {

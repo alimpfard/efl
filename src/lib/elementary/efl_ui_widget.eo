@@ -13,10 +13,10 @@ struct Efl.Ui.Widget_Focus_State {
    logical : bool; [[$true if this is registered as logical currently]]
 }
 
-abstract Efl.Ui.Widget (Efl.Canvas.Group, Efl.Access.Object,
+abstract Efl.Ui.Widget extends Efl.Canvas.Group implements Efl.Access.Object,
                         Efl.Access.Component, Efl.Part, Efl.Ui.Focus.Object,
-                        Efl.Ui.Cursor, Efl.Ui.Translatable,
-                        Efl.Selection, Efl.Ui.Dnd)
+                        Efl.Ui.Cursor, Efl.Ui.L10n,
+                        Efl.Ui.Selection, Efl.Ui.Dnd
 {
    [[Efl UI widget abstract class]]
    legacy_prefix: elm_widget;
@@ -145,7 +145,9 @@ abstract Efl.Ui.Widget (Efl.Canvas.Group, Efl.Access.Object,
 
            See also @.widget_top.
          ]]
-         set {}
+         set {
+            legacy: elm_widget_parent_set; /* internal in legacy */
+         }
          get {
             legacy: elm_widget_parent_get; /* internal in legacy */
          }
@@ -583,13 +585,13 @@ abstract Efl.Ui.Widget (Efl.Canvas.Group, Efl.Access.Object,
       Efl.Ui.Focus.Object.focus_parent { get; }
       Efl.Ui.Focus.Object.focus_geometry { get; }
       Efl.Ui.Focus.Object.focus { set; }
-      Efl.Ui.Base.mirrored { get; set; }
-      Efl.Ui.Base.mirrored_automatic { get; set; }
+      Efl.Ui.I18n.mirrored { get; set; }
+      Efl.Ui.I18n.mirrored_automatic { get; set; }
       Efl.Ui.Cursor.cursor { get; set; }
       Efl.Ui.Cursor.cursor_style { get; set; }
       Efl.Ui.Cursor.cursor_theme_search_enabled { get; set; }
       Efl.Ui.Focus.Object.on_focus_update;
-      Efl.Ui.Translatable.translation_update; [[This implements the calls to $gettext() and $text_set().]]
+      Efl.Ui.L10n.translation_update; [[This implements the calls to $gettext() and $text_set().]]
       Efl.Part.part_get; [[Returns @Efl.Ui.Widget_Part.]]
    }
    events {

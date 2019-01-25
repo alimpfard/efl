@@ -143,11 +143,11 @@ _eldbus_model_arguments_efl_model_property_set(Eo *obj,
    eina_value_flush(prop_value);
    eina_value_copy(value, prop_value);
 
-   return eina_future_resolved(efl_loop_future_scheduler_get(obj),
+   return efl_loop_future_resolved(obj,
                                eina_value_reference_copy(value));
 
  on_error:
-   return eina_future_rejected(efl_loop_future_scheduler_get(obj), err);
+   return efl_loop_future_rejected(obj, err);
 }
 
 static Eina_Value *
@@ -249,7 +249,7 @@ eldbus_model_arguments_process_arguments(Eldbus_Model_Arguments_Data *pd,
    result = EINA_TRUE;
 
 on_error:
-   while (property = eina_array_pop(changed_properties))
+   while ((property = eina_array_pop(changed_properties)))
      eina_stringshare_del(property);
    eina_array_free(changed_properties);
    eina_value_free(value_struct);
@@ -293,7 +293,7 @@ _eldbus_model_arguments_is(Eldbus_Model_Arguments_Data *pd,
    _eldbus_model_arguments_properties_load(pd);
 
    i = _eldbus_model_arguments_argument_index_get(pd, argument);
-   if (i >= eina_hash_population(pd->properties))
+   if ((i > 0x7fffffff) || ((int)i >= eina_hash_population(pd->properties)))
      {
         WRN("Argument not found: %s", argument);
         return false;
@@ -321,8 +321,6 @@ _eldbus_model_arguments_is_output_argument(Eldbus_Model_Arguments_Data *pd, cons
 static unsigned int
 _eldbus_model_arguments_argument_index_get(Eldbus_Model_Arguments_Data *pd, const char *argument)
 {
-   Eina_Stringshare *name;
-   Eina_Array_Iterator it;
    unsigned int i = 0;
 
    if (sscanf(argument, ARGUMENT_FORMAT, &i) > 0)

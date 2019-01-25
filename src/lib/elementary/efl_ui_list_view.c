@@ -32,7 +32,6 @@ static const Evas_Smart_Cb_Description _smart_callbacks[] = {
 
 void _efl_ui_list_view_custom_layout(Efl_Ui_List_View *);
 void _efl_ui_list_view_item_select_set(Efl_Ui_List_View_Layout_Item*, Eina_Bool);
-static void _layout(Efl_Ui_List_View_Data* pd);
 
 static Eina_Bool _key_action_move(Evas_Object *obj, const char *params);
 static Eina_Bool _key_action_select(Evas_Object *obj, const char *params);
@@ -111,33 +110,6 @@ _efl_ui_list_view_pan_efl_object_destructor(Eo *obj, Efl_Ui_List_View_Pan_Data *
 
 #include "efl_ui_list_view_pan.eo.c"
 
-EOLIAN static void
-_efl_ui_list_view_efl_ui_scrollable_interactive_content_pos_set(Eo *obj EINA_UNUSED, Efl_Ui_List_View_Data *psd, Eina_Position2D pos)
-{
-   efl_ui_scrollable_content_pos_set(psd->scrl_mgr, pos);
-}
-
-EOLIAN static Eina_Position2D
-_efl_ui_list_view_efl_ui_scrollable_interactive_content_pos_get(const Eo *obj EINA_UNUSED, Efl_Ui_List_View_Data *psd)
-{
-   Eina_Position2D pos = efl_ui_scrollable_content_pos_get(psd->scrl_mgr);
-   return pos;
-}
-
-EOLIAN static Eina_Size2D
-_efl_ui_list_view_efl_ui_scrollable_interactive_content_size_get(const Eo *obj EINA_UNUSED, Efl_Ui_List_View_Data *psd)
-{
-   Eina_Size2D size = efl_ui_scrollable_content_size_get(psd->scrl_mgr);
-   return size;
-}
-
-EOLIAN static Eina_Rect
-_efl_ui_list_view_efl_ui_scrollable_interactive_viewport_geometry_get(const Eo *obj EINA_UNUSED, Efl_Ui_List_View_Data *psd)
-{
-   Eina_Rect gmt = efl_ui_scrollable_viewport_geometry_get(psd->scrl_mgr);
-   return gmt;
-}
-
 static Eina_Bool
 _efl_model_properties_has(Efl_Model *model, Eina_Stringshare *propfind)
 {
@@ -186,11 +158,21 @@ _on_item_mouse_up(void *data, Evas *evas EINA_UNUSED, Evas_Object *o EINA_UNUSED
 {
    Evas_Event_Mouse_Down *ev = event_info;
    Efl_Ui_List_View_Layout_Item *item = data;
+   Eina_Value *v;
+   Eina_Bool select;
 
    if (ev->button != 1) return;
    if (ev->event_flags & EVAS_EVENT_FLAG_ON_HOLD) return;
 
-   _efl_ui_list_view_item_select_set(item, EINA_TRUE);
+   v = efl_model_property_get(item->children, SELECTED_PROP);
+   if (!eina_value_get(v, &select))
+     {
+        WRN("Could not get the select value");
+        eina_value_free(v);
+        return;
+     }
+   _efl_ui_list_view_item_select_set(item, !select);
+   eina_value_free(v);
 }
 
 EOLIAN static void
@@ -256,7 +238,11 @@ _efl_ui_list_view_efl_gfx_entity_size_set(Eo *obj, Efl_Ui_List_View_Data *pd, Ei
 EOLIAN static void
 _efl_ui_list_view_efl_canvas_group_group_calculate(Eo *obj EINA_UNUSED, Efl_Ui_List_View_Data *pd)
 {
-   _layout(pd);
+   if (!pd->model)
+     return;
+
+   efl_ui_list_view_relayout_layout_do(pd->relayout, pd->obj, pd->seg_array_first, pd->seg_array);
+
 }
 
 EOLIAN static void
@@ -610,6 +596,7 @@ _efl_ui_list_view_efl_canvas_group_group_add(Eo *obj, Efl_Ui_List_View_Data *pd)
 
    pd->scrl_mgr = efl_add(EFL_UI_SCROLL_MANAGER_CLASS, obj,
                             efl_ui_mirrored_set(efl_added, efl_ui_mirrored_get(obj)));
+   efl_composite_attach(obj, pd->scrl_mgr);
    pd->pan_obj = efl_add(MY_PAN_CLASS, obj);
    pan_data = efl_data_scope_get(pd->pan_obj, MY_PAN_CLASS);
    pan_data->wobj = obj;
@@ -646,7 +633,9 @@ _efl_ui_list_view_efl_canvas_group_group_add(Eo *obj, Efl_Ui_List_View_Data *pd)
 EOLIAN static void
 _efl_ui_list_view_efl_canvas_group_group_del(Eo *obj, Efl_Ui_List_View_Data *pd)
 {
-   ELM_SAFE_FREE(pd->pan_obj, evas_object_del);
+   efl_ui_list_view_relayout_model_set(pd->relayout, NULL);
+
+   ELM_SAFE_FREE(pd->pan_obj, efl_del);
    efl_canvas_group_del(efl_super(obj, MY_CLASS));
 }
 
@@ -663,15 +652,16 @@ _efl_ui_list_view_efl_ui_widget_focus_manager_focus_manager_create(Eo *obj EINA_
 EOLIAN static Eo *
 _efl_ui_list_view_efl_object_finalize(Eo *obj, Efl_Ui_List_View_Data *pd)
 {
-
    if (!pd->factory)
-     pd->factory = efl_add(EFL_UI_LAYOUT_FACTORY_CLASS, obj);
+     {
+        pd->factory = efl_new(EFL_UI_LAYOUT_FACTORY_CLASS);
+        efl_ui_layout_factory_theme_config(pd->factory, "list_item", NULL, "default");
+     }
 
    if(!pd->relayout)
      {
-        pd->relayout = efl_add(EFL_UI_LIST_VIEW_PRECISE_LAYOUTER_CLASS, obj);
-        if (pd->model)
-          efl_ui_list_view_relayout_model_set(pd->relayout, pd->model);
+        pd->relayout = efl_new(EFL_UI_LIST_VIEW_PRECISE_LAYOUTER_CLASS);
+        efl_ui_list_view_relayout_model_set(pd->relayout, pd->model);
      }
    return obj;
 }
@@ -685,7 +675,7 @@ _efl_ui_list_view_efl_object_constructor(Eo *obj, Efl_Ui_List_View_Data *pd)
    evas_object_smart_callbacks_descriptions_set(obj, _smart_callbacks);
    efl_access_object_role_set(obj, EFL_ACCESS_ROLE_LIST);
 
-   pd->seg_array = efl_add(EFL_UI_LIST_VIEW_SEG_ARRAY_CLASS, obj, efl_ui_list_view_seg_array_setup(efl_added, 32));
+   pd->seg_array = efl_ui_list_view_seg_array_setup(32);
 
    efl_event_callback_add(obj, EFL_UI_FOCUS_MANAGER_EVENT_FOCUS_CHANGED, _list_element_focused, NULL);
 
@@ -704,45 +694,36 @@ _efl_ui_list_view_efl_object_constructor(Eo *obj, Efl_Ui_List_View_Data *pd)
 EOLIAN static void
 _efl_ui_list_view_efl_object_destructor(Eo *obj, Efl_Ui_List_View_Data *pd)
 {
-   efl_ui_list_view_relayout_model_set(pd->relayout, NULL);
-
-   efl_unref(pd->model);
-   eina_stringshare_del(pd->style);
+   efl_event_callback_del(obj, EFL_UI_FOCUS_MANAGER_EVENT_FOCUS_CHANGED,
+                                            _list_element_focused, NULL);
 
    _efl_ui_list_view_edje_object_detach(obj);
 
-   ELM_SAFE_FREE(pd->pan_obj, evas_object_del);
-   efl_canvas_group_del(efl_super(obj, MY_CLASS));
+   efl_replace(&pd->model, NULL);
+   efl_replace(&pd->relayout, NULL);
+   efl_replace(&pd->factory, NULL);
 
+   efl_ui_list_view_seg_array_free(pd->seg_array);
+
+   eina_stringshare_del(pd->style);
    efl_destructor(efl_super(obj, MY_CLASS));
 }
 
 EOLIAN static void
 _efl_ui_list_view_layout_factory_set(Eo *obj EINA_UNUSED, Efl_Ui_List_View_Data *pd, Efl_Ui_Factory *factory)
 {
-   if (pd->factory)
-     efl_unref(pd->factory);
-
-   pd->factory = factory;
-   efl_ref(pd->factory);
+   efl_replace(&pd->factory, factory);
 }
 
 EOLIAN static void
 _efl_ui_list_view_efl_ui_view_model_set(Eo *obj EINA_UNUSED, Efl_Ui_List_View_Data *pd, Efl_Model *model)
 {
-   if (pd->model == model)
+   if (!efl_replace(&pd->model, model))
      return;
 
-   if (pd->model)
-     {
-        if (pd->relayout)
-          efl_ui_list_view_relayout_model_set(pd->relayout, NULL);
-        efl_ui_list_view_seg_array_flush(pd->seg_array);
-     }
+   efl_ui_list_view_seg_array_flush(pd->seg_array);
 
-   efl_replace(&pd->model, model);
-
-   if (pd->model && pd->relayout)
+   if (pd->relayout)
      efl_ui_list_view_relayout_model_set(pd->relayout, pd->model);
 
    evas_object_smart_changed(pd->obj);
@@ -841,35 +822,12 @@ _efl_ui_list_view_item_select_set(Efl_Ui_List_View_Layout_Item *item, Eina_Bool 
    if (_efl_model_properties_has(item->children, sprop))
      {
         Eina_Value v;
-        eina_value_setup(&v, EINA_VALUE_TYPE_UCHAR);
+        eina_value_setup(&v, EINA_VALUE_TYPE_BOOL);
         eina_value_set(&v, selected);
         efl_model_property_set(item->children, sprop, &v);
         eina_value_flush(&v);
      }
    eina_stringshare_del(sprop);
-}
-
-static void
-_efl_ui_list_view_relayout_set(Eo *obj EINA_UNUSED, Efl_Ui_List_View_Data *pd EINA_UNUSED, Efl_Ui_List_View_Relayout *object)
-{
-   efl_replace(&pd->relayout, object);
-   if (pd->model && pd->relayout)
-     efl_ui_list_view_relayout_model_set(pd->relayout, pd->model);
-}
-
-static Efl_Ui_List_View_Relayout *
-_efl_ui_list_view_relayout_get(const Eo *obj EINA_UNUSED, Efl_Ui_List_View_Data *pd EINA_UNUSED)
-{
-   return pd->relayout;
-}
-
-static void
-_layout(Efl_Ui_List_View_Data *pd)
-{
-   if (!pd->model)
-     return;
-
-   efl_ui_list_view_relayout_layout_do(pd->relayout, pd->obj, pd->seg_array_first, pd->seg_array);
 }
 
 static Eina_Value
@@ -934,14 +892,23 @@ _efl_ui_list_view_efl_ui_widget_focus_state_apply(Eo *obj, Efl_Ui_List_View_Data
    return efl_ui_widget_focus_state_apply(efl_super(obj, MY_CLASS), current_state, configured_state, obj);
 }
 
-EOLIAN static Efl_Ui_List_View_Layout_Item *
-_efl_ui_list_view_efl_ui_list_view_model_realize(Eo *obj, Efl_Ui_List_View_Data *pd, Efl_Ui_List_View_Layout_Item *item)
+typedef struct _Efl_Ui_List_Vuew_Layout_Item_Tracking Efl_Ui_List_View_Layout_Item_Tracking;
+struct _Efl_Ui_List_Vuew_Layout_Item_Tracking
 {
-   Efl_Ui_List_View_Item_Event evt;
-   EINA_SAFETY_ON_NULL_RETURN_VAL(item->children, item);
+   Efl_Ui_List_View_Layout_Item *item;
+   Efl_Ui_List_View_Data *pd;
+};
 
-   item->layout = efl_ui_factory_create(pd->factory, item->children, obj);
-   evas_object_smart_member_add(item->layout, pd->pan_obj);
+static Eina_Value
+_content_created(Eo *obj, void *data, const Eina_Value value)
+{
+   Efl_Ui_List_View_Layout_Item_Tracking *tracking = data;
+   Efl_Ui_List_View_Layout_Item *item = tracking->item;
+   Efl_Ui_List_View_Item_Event evt;
+
+   eina_value_pget(&value, &item->layout);
+
+   evas_object_smart_member_add(item->layout, tracking->pd->pan_obj);
    evas_object_event_callback_add(item->layout, EVAS_CALLBACK_MOUSE_UP, _on_item_mouse_up, item);
 
    if (_elm_config->atspi_mode)
@@ -954,9 +921,48 @@ _efl_ui_list_view_efl_ui_list_view_model_realize(Eo *obj, Efl_Ui_List_View_Data 
    evt.layout = item->layout;
    evt.index = efl_ui_list_view_item_index_get(item);
    efl_event_callback_call(obj, EFL_UI_LIST_VIEW_EVENT_ITEM_REALIZED, &evt);
-   efl_ui_focus_composition_dirty(obj);
 
+   tracking->item->layout_request = NULL;
+   efl_ui_list_view_relayout_content_created(tracking->pd->relayout, item);
+
+   efl_ui_focus_composition_dirty(obj);
    evas_object_show(item->layout);
+
+   return value;
+}
+
+static void
+_clean_request(Eo *obj EINA_UNUSED, void *data, const Eina_Future *dead_future EINA_UNUSED)
+{
+   Efl_Ui_List_View_Layout_Item_Tracking *tracking = data;
+
+   tracking->item->layout_request = NULL;
+   free(tracking);
+}
+
+EOLIAN static Efl_Ui_List_View_Layout_Item *
+_efl_ui_list_view_efl_ui_list_view_model_realize(Eo *obj, Efl_Ui_List_View_Data *pd, Efl_Ui_List_View_Layout_Item *item)
+{
+   Efl_Ui_List_View_Layout_Item_Tracking *tracking;
+   EINA_SAFETY_ON_NULL_RETURN_VAL(item->children, item);
+
+   if (!item->children) return item;
+
+   if (item->layout_request) eina_future_cancel(item->layout_request);
+
+   tracking = calloc(1, sizeof (Efl_Ui_List_View_Layout_Item_Tracking));
+   if (!tracking) return item;
+
+   tracking->item = item;
+   tracking->pd = pd;
+
+   item->layout_request = efl_ui_view_factory_create_with_event(pd->factory, item->children, obj);
+   item->layout_request = efl_future_then(obj, item->layout_request,
+                                          .success = _content_created,
+                                          .success_type = EINA_VALUE_TYPE_OBJECT,
+                                          .data = tracking,
+                                          .free = _clean_request);
+
    return item;
 }
 
@@ -964,13 +970,23 @@ EOLIAN static void
 _efl_ui_list_view_efl_ui_list_view_model_unrealize(Eo *obj, Efl_Ui_List_View_Data *pd, Efl_Ui_List_View_Layout_Item *item)
 {
    Efl_Ui_List_View_Item_Event evt;
-   EINA_SAFETY_ON_NULL_RETURN(item->layout);
+   EINA_SAFETY_ON_NULL_RETURN(item);
+
+   if (!item->layout)
+     return;
+
+   // First check if the item has been fully realized
+   if (item->layout_request)
+     {
+        eina_future_cancel(item->layout_request);
+        return ;
+     }
 
    evas_object_event_callback_del_full(item->layout, EVAS_CALLBACK_MOUSE_UP, _on_item_mouse_up, item);
    if (elm_object_focus_allow_get(item->layout))
      {
-        if (elm_object_focus_get(item->layout))
-          elm_object_focus_set(item->layout, EINA_FALSE);
+        if (efl_ui_focus_object_focus_get(item->layout))
+          efl_ui_focus_object_focus_set(item->layout, EINA_FALSE);
         efl_ui_focus_manager_calc_unregister(obj, item->layout);
      }
    evas_object_hide(item->layout);
@@ -981,8 +997,8 @@ _efl_ui_list_view_efl_ui_list_view_model_unrealize(Eo *obj, Efl_Ui_List_View_Dat
    evt.index = efl_ui_list_view_item_index_get(item);
    efl_event_callback_call(obj, EFL_UI_LIST_VIEW_EVENT_ITEM_UNREALIZED, &evt);
 
-   evas_object_smart_member_del(item->layout);
    efl_ui_factory_release(pd->factory, item->layout);
+   evas_object_smart_member_del(item->layout);
    item->layout = NULL;
 }
 

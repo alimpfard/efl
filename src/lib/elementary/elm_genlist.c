@@ -385,9 +385,12 @@ _widget_calculate_recursive(Eo *obj)
    if (!pd || !pd->resize_obj)
      return;
 
-   if (!efl_canvas_group_need_recalculate_get(obj) &&
-       !efl_canvas_group_need_recalculate_get(pd->resize_obj))
-     return;
+   if (!efl_canvas_group_need_recalculate_get(obj))
+     {
+        if (!efl_isa(pd->resize_obj, EFL_CANVAS_GROUP_CLASS) ||
+            !efl_canvas_group_need_recalculate_get(pd->resize_obj))
+          return;
+     }
 
    EINA_LIST_FOREACH(pd->subobjs, l, child)
      _widget_calculate_recursive(child);
@@ -3438,9 +3441,64 @@ _elm_genlist_efl_ui_focus_manager_setup_on_first_touch(Eo *obj, Elm_Genlist_Data
         else
           {
              //Just set evas focus on the genlist itself, events will pass on and a other element will be taken
-             evas_object_focus_set(obj, EINA_TRUE);
+             efl_ui_focus_object_focus_set(obj, EINA_TRUE);
           }
       }
+}
+
+EOLIAN static Efl_Ui_Focus_Object*
+_elm_genlist_efl_ui_focus_manager_manager_focus_get(const Eo *obj, EINA_UNUSED Elm_Genlist_Data *pd)
+{
+   Eo *focused_obj = efl_ui_focus_manager_focus_get(efl_super(obj, MY_CLASS));
+   Eo *registered_manager = efl_ui_focus_object_focus_manager_get(obj);
+
+   if (!focused_obj && efl_ui_focus_manager_redirect_get(registered_manager))
+     return (Efl_Ui_Focus_Object*) obj;
+
+   return focused_obj;
+}
+
+static Efl_Ui_Focus_Object*
+_select_candidate(Eo *obj, EINA_UNUSED Elm_Genlist_Data *pd, Efl_Ui_Focus_Direction direction)
+{
+   Elm_Object_Item *first = elm_genlist_first_item_get(obj);
+   Elm_Object_Item *last = elm_genlist_last_item_get(obj);
+
+   switch(direction)
+     {
+        case EFL_UI_FOCUS_DIRECTION_DOWN:
+        case EFL_UI_FOCUS_DIRECTION_RIGHT:
+          elm_object_item_focus_set(first, EINA_TRUE);
+          return obj;
+        break;
+        case EFL_UI_FOCUS_DIRECTION_UP:
+        case EFL_UI_FOCUS_DIRECTION_LEFT:
+          elm_object_item_focus_set(last, EINA_TRUE);
+          return obj;
+        break;
+        case EFL_UI_FOCUS_DIRECTION_NEXT:
+        case EFL_UI_FOCUS_DIRECTION_PREVIOUS:
+          //do not go further with logical movement
+          return NULL;
+        break;
+        default:
+          ERR("Uncaught focus direction");
+          return NULL;
+        break;
+     }
+}
+
+EOLIAN static Efl_Ui_Focus_Object*
+_elm_genlist_efl_ui_focus_manager_move(Eo *obj, Elm_Genlist_Data *pd, Efl_Ui_Focus_Direction direction)
+{
+   if (efl_ui_focus_manager_focus_get(obj) == obj)
+     {
+        return _select_candidate(obj, pd, direction);
+     }
+   else
+     {
+        return efl_ui_focus_manager_move(efl_super(obj, MY_CLASS), direction);
+     }
 }
 
 EOLIAN static Eina_Bool

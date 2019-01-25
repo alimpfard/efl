@@ -1516,7 +1516,7 @@ EFL_START_TEST(eolian_parts)
    int i = 0;
 
    static const char *part_classes[] = {
-      "Override", "Base", "Parts"
+      "Override", "Parts"
    };
 
    Eolian_State *eos = eolian_state_new();
@@ -1552,6 +1552,102 @@ EFL_START_TEST(eolian_parts)
 }
 EFL_END_TEST
 
+EFL_START_TEST(eolian_mixins_require)
+{
+   const Eolian_Unit *unit;
+   const Eolian_Class *cl;
+   const Eolian_Class *base;
+
+   Eolian_State *eos = eolian_state_new();
+
+   fail_if(!eolian_state_directory_add(eos, TESTS_SRC_DIR"/data"));
+
+   fail_if(!(unit = eolian_state_file_parse(eos, TESTS_SRC_DIR"/data/mixins_require.eo")));
+
+   fail_if (!(cl = eolian_state_class_by_name_get(eos, "Mixins.Require")));
+   fail_if (!(base = eolian_state_class_by_name_get(eos, "Base")));
+
+   ck_assert_ptr_eq(eolian_class_parent_get(cl), NULL);
+
+   //Check that implements is empty
+   {
+      Eolian_Class *extc;
+      Eina_Iterator *ext = eolian_class_extensions_get (cl);
+
+      EINA_ITERATOR_FOREACH(ext, extc)
+        {
+           ck_abort_msg("Iterator should be empty");
+        }
+      eina_iterator_free(ext);
+   }
+   //check that implements contains this one class
+   {
+      Eolian_Implement *impl;
+      Eina_Iterator *i = eolian_class_implements_get(cl);
+      Eina_Array *tmp = eina_array_new(1);
+
+      EINA_ITERATOR_FOREACH(i, impl)
+        {
+           if (eolian_implement_class_get(impl) != cl)
+             {
+                eina_array_push(tmp, eolian_implement_class_get(impl));
+                ck_assert_ptr_eq(eolian_implement_class_get(impl), base);
+             }
+        }
+      ck_assert_int_eq(eina_array_count(tmp), 1);
+      eina_array_free(tmp);
+      eina_iterator_free(i);
+   }
+   //check that the mixins has the right require
+   {
+      Eina_Iterator *iter = eolian_class_requires_get(cl);
+      Eina_Array *tmp = eina_array_new(1);
+
+      EINA_ITERATOR_FOREACH(iter, cl)
+        {
+           eina_array_push(tmp, cl);
+        }
+      ck_assert_int_eq(eina_array_count(tmp), 1);
+      ck_assert_ptr_eq(eina_array_data_get(tmp, 0), base);
+      eina_array_free(tmp);
+      eina_iterator_free(iter);
+   }
+   eolian_state_free(eos);
+}
+EFL_END_TEST
+
+EFL_START_TEST(eolian_class_requires_classes)
+{
+   const Eolian_Unit *unit;
+   const Eolian_Class *cl;
+
+   Eolian_State *eos = eolian_state_new();
+
+   fail_if(!eolian_state_directory_add(eos, TESTS_SRC_DIR"/data"));
+
+   fail_if(!(unit = eolian_state_file_parse(eos, TESTS_SRC_DIR"/data/class_requires.eo")));
+
+   fail_if (!(cl = eolian_state_class_by_name_get(eos, "Class.Requires")));
+
+   eolian_state_free(eos);
+}
+EFL_END_TEST
+
+EFL_START_TEST(eolian_class_unimpl)
+{
+   Eolian_State *eos = eolian_state_new();
+
+   fail_if(!eolian_state_directory_add(eos, TESTS_SRC_DIR"/data"));
+
+   setenv("EOLIAN_CLASS_UNIMPLEMENTED_WARN", "1", 1);
+   const Eolian_Unit *unit = eolian_state_file_parse(eos, TESTS_SRC_DIR"/data/unimpl.eo");
+   unsetenv("EOLIAN_CLASS_UNIMPLEMENTED_WARN");
+   fail_if(!unit);
+
+   eolian_state_free(eos);
+}
+EFL_END_TEST
+
 void eolian_parsing_test(TCase *tc)
 {
    tcase_add_test(tc, eolian_simple_parsing);
@@ -1575,4 +1671,7 @@ void eolian_parsing_test(TCase *tc)
    tcase_add_test(tc, eolian_function_types);
    tcase_add_test(tc, eolian_function_as_arguments);
    tcase_add_test(tc, eolian_parts);
+   tcase_add_test(tc, eolian_mixins_require);
+   tcase_add_test(tc, eolian_class_requires_classes);
+   tcase_add_test(tc, eolian_class_unimpl);
 }

@@ -73,7 +73,7 @@ typedef struct _Efl_Text_Annotate_Annotation Efl_Text_Annotate_Annotation;
 
 #include "interfaces/efl_types.eot.h"
 
-#include <Efl_Model_Common.h>
+#include <Efl_MVVM_Common.h>
 
 /* Data types */
 #include "interfaces/efl_gfx_types.eot.h"
@@ -94,10 +94,11 @@ typedef Efl_Gfx_Path_Command_Type Efl_Gfx_Path_Command;
 #include "interfaces/efl_text.eo.h"
 #include "interfaces/efl_text_types.eot.h"
 #include "interfaces/efl_orientation.eo.h"
-#include "interfaces/efl_ui_base.eo.h"
+#include "interfaces/efl_ui_i18n.eo.h"
 #include "interfaces/efl_ui_direction.eo.h"
 #include "interfaces/efl_ui_drag.eo.h"
-#include "interfaces/efl_ui_range.eo.h"
+#include "interfaces/efl_ui_range_display.eo.h"
+#include "interfaces/efl_ui_range_interactive.eo.h"
 #include "interfaces/efl_ui_autorepeat.eo.h"
 #include "interfaces/efl_ui_draggable.eo.h"
 #include "interfaces/efl_ui_clickable.eo.h"
@@ -149,6 +150,7 @@ typedef Efl_Gfx_Path_Command_Type Efl_Gfx_Path_Command;
 #include "interfaces/efl_ui_model_connect.eo.h"
 #include "interfaces/efl_ui_factory.eo.h"
 #include "interfaces/efl_ui_format.eo.h"
+#include "interfaces/efl_cached_item.eo.h"
 
 /* Observable interface */
 #include "interfaces/efl_observer.eo.h"
@@ -181,6 +183,8 @@ typedef Efl_Gfx_Path_Command_Type Efl_Gfx_Path_Command;
 #include "interfaces/efl_text_markup.eo.h"
 #include "interfaces/efl_text_markup_util.eo.h"
 
+EAPI void efl_observable_tuple_free(Efl_Observable_Tuple *tuple);
+
 /**
  * @brief Get a proxy object referring to a part of an object.
  *
@@ -196,6 +200,22 @@ typedef Efl_Gfx_Path_Command_Type Efl_Gfx_Path_Command;
  * @since 1.21
  */
 EAPI Efl_Object *efl_part(const Eo *obj, const char *name);
+
+/**
+ * @brief This triggers the create method of a factory and trigger the item created event.
+ *
+ * @param[in] factory The factory that will provide the item
+ * @param[in] model The model to use to fetch information from
+ * @param[in] parent The parent of the newly created item
+ * @return A future that will resolve with the newly created item.
+ *
+ * @since 1.22
+ * @note This exists as we always want to trigger the event once all the logic
+ * of every factory in the chain has done what it planned to do. Basically we
+ * want the inverse of inheritance call like efl_super. So we do setup the future
+ * in this way.
+ */
+EAPI Eina_Future *efl_ui_view_factory_create_with_event(Efl_Ui_Factory *factory, Efl_Model *model, Efl_Gfx_Entity *parent);
 
 #else
 

@@ -1276,6 +1276,7 @@ _efl_ui_calendar_item_day_number_set(Eo *obj, Efl_Ui_Calendar_Item_Data *pd, int
      pd->part = po;
    else
      pd->part = evas_object_data_get(po, "_part_access_obj");
+   _efl_ui_focus_event_redirector(pd->part, obj);
 
    EINA_SAFETY_ON_NULL_RETURN(pd->part);
 }
@@ -1299,6 +1300,12 @@ EOLIAN static Eina_Rect
 _efl_ui_calendar_item_efl_ui_focus_object_focus_geometry_get(const Eo *obj EINA_UNUSED, Efl_Ui_Calendar_Item_Data *pd)
 {
    return efl_gfx_entity_geometry_get(pd->part);
+}
+
+EOLIAN static Efl_Ui_Focus_Object*
+_efl_ui_calendar_item_efl_ui_focus_object_focus_parent_get(const Eo *obj, Efl_Ui_Calendar_Item_Data *pd EINA_UNUSED)
+{
+   return efl_parent_get(obj);
 }
 
 #include "efl_ui_calendar_item.eo.c"

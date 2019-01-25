@@ -12,6 +12,8 @@ if get_option('native-arch-optimization')
   if cc.has_header(native_header) == false
     error('Error, header '+native_header+' is required')
   endif
+
+  config_h.set10('HAVE_'+native_header.underscorify().to_upper(), true)
 endif
 
 header_checks = [
@@ -194,3 +196,8 @@ endif
 
 config_h.set('SIZEOF_INT', cc.sizeof('int'))
 config_h.set('SIZEOF_LONG', cc.sizeof('long'))
+
+if sys_windows == true
+  config_h.set('HAVE_DLSYM', '1')
+  config_h.set('HAVE_NOTIFY_WIN32', '1')
+endif

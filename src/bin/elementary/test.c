@@ -179,6 +179,8 @@ void test_scroller2(void *data, Evas_Object *obj, void *event_info);
 void test_scroller3(void *data, Evas_Object *obj, void *event_info);
 void test_scroller4(void *data, Evas_Object *obj, void *event_info);
 void test_scroller5(void *data, Evas_Object *obj, void *event_info);
+void test_scroller6(void *data, Evas_Object *obj, void *event_info);
+void test_scroller7(void *data, Evas_Object *obj, void *event_info);
 void test_efl_ui_scroller(void *data, Evas_Object *obj, void *event_info);
 void test_efl_ui_scroller2(void *data, Evas_Object *obj, void *event_info);
 void test_spinner(void *data, Evas_Object *obj, void *event_info);
@@ -187,6 +189,8 @@ void test_ui_spin_button(void *data, Evas_Object *obj, void *event_info);
 void test_ui_datepicker(void *data, Evas_Object *obj, void *event_info);
 void test_ui_timepicker(void *data, Evas_Object *obj, void *event_info);
 void test_ui_tags(void *data, Evas_Object *obj, void *event_info);
+void test_ui_panel(void *data, Evas_Object *obj, void *event_info);
+void test_ui_panel2(void *data, Evas_Object *obj, void *event_info);
 void test_index(void *data, Evas_Object *obj, void *event_info);
 void test_index2(void *data, Evas_Object *obj, void *event_info);
 void test_index3(void *data, Evas_Object *obj, void *event_info);
@@ -256,6 +260,7 @@ void test_focus_object_policy(void *data, Evas_Object *obj, void *event_info);
 void test_focus4(void *data, Evas_Object *obj, void *event_info);
 void test_focus5(void *data, Evas_Object *obj, void *event_info);
 void test_focus6(void *data, Evas_Object *obj, void *event_info);
+void test_focus7(void *data EINA_UNUSED, Evas_Object *obj EINA_UNUSED, void *event_info EINA_UNUSED);
 void test_flipselector(void *data, Evas_Object *obj, void *event_info);
 void test_diskselector(void *data, Evas_Object *obj, void *event_info);
 void test_colorselector(void *data, Evas_Object *obj, void *event_info);
@@ -369,6 +374,8 @@ void test_efl_anim_interpolator(void *data, Evas_Object *obj, void *event_info);
 void test_gesture_framework(void *data, Evas_Object *obj, void *event_info);
 
 void test_ui_tab_pager(void *data, Evas_Object *obj, void *event_info);
+void test_ui_pager(void *data, Evas_Object *obj, void *event_info);
+void test_ui_pager_scroll(void *data, Evas_Object *obj, void *event_info);
 
 static void _list_udpate(void);
 
@@ -1060,6 +1067,8 @@ add_tests:
    ADD_TEST(NULL, "Scroller", "Scroller 3", test_scroller3);
    ADD_TEST(NULL, "Scroller", "Page Scroller", test_scroller4);
    ADD_TEST(NULL, "Scroller", "Scroller on Popup", test_scroller5);
+   ADD_TEST(NULL, "Scroller", "Scroller 6", test_scroller6);
+   ADD_TEST(NULL, "Scroller", "Scroller 7", test_scroller7);
    ADD_TEST_EO(NULL, "Scroller", "Efl.Ui.Scroller", test_efl_ui_scroller);
 
    //------------------------------//
@@ -1085,6 +1094,8 @@ add_tests:
 
    //------------------------------//
    ADD_TEST_EO(NULL, "Tab Pager", "Efl.Ui.Tab_Pager", test_ui_tab_pager);
+   ADD_TEST_EO(NULL, "Pager", "Efl.Ui.Pager", test_ui_pager);
+   ADD_TEST_EO(NULL, "Scroll Pager", "Efl.Ui.Pager (Scroll)", test_ui_pager_scroll);
 
    //------------------------------//
    ADD_TEST(NULL, "Popups", "Ctxpopup", test_ctxpopup);
@@ -1143,6 +1154,7 @@ add_tests:
    ADD_TEST(NULL, "Focus", "Focus 4", test_focus4);
    ADD_TEST(NULL, "Focus", "Focus 5", test_focus5);
    ADD_TEST(NULL, "Focus", "Focus 6", test_focus6);
+   ADD_TEST(NULL, "Focus", "Focus 7", test_focus7);
 
    //------------------------------//
    ADD_TEST(NULL, "Naviframe", "Naviframe", test_naviframe);
@@ -1159,6 +1171,8 @@ add_tests:
    ADD_TEST(NULL, "Dividers", "Panel Scrollable", test_panel2);
    ADD_TEST(NULL, "Dividers", "Panes", test_panes);
    ADD_TEST_EO(NULL, "Dividers", "Efl.Ui.Panes", test_panes_minsize);
+   ADD_TEST_EO(NULL, "Dividers", "Efl.Ui.Panel", test_ui_panel);
+   ADD_TEST_EO(NULL, "Dividers", "Efl.Ui.Panel Scrollable", test_ui_panel2);
 
    //------------------------------//
    ADD_TEST(NULL, "Standardization", "Conformant", test_conformant);

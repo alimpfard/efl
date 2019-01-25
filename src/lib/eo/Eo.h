@@ -223,15 +223,6 @@ typedef void (*Efl_Del_Intercept) (Eo *obj_id);
 typedef void (*Efl_Event_Cb)(void *data, const Efl_Event *event);
 
 /**
- * @brief Callback priority value. Range is -32k - 32k. The lower the number,
- * the higher the priority.
- *
- * See @ref EFL_CALLBACK_PRIORITY_AFTER, @ref EFL_CALLBACK_PRIORITY_BEFORE @ref
- * EFL_CALLBACK_PRIORITY_DEFAULT
- */
-typedef short Efl_Callback_Priority;
-
-/**
  * @struct _Efl_Callback_Array_Item
  * @brief An item in an array of callback desc/func.
  *
@@ -379,7 +370,7 @@ typedef struct _Efl_Future_Cb_Desc {
     * using @c eina_value_flush() once they are unused (no more future or futures
     * returned a new value).
     */
-   Eina_Value (*success)(Eo *o, const Eina_Value value);
+   Eina_Value (*success)(Eo *o, void *data, const Eina_Value value);
    /**
     * Called on error (value.type is @c EINA_VALUE_TYPE_ERROR).
     *
@@ -417,7 +408,7 @@ typedef struct _Efl_Future_Cb_Desc {
     * using @c eina_value_flush() once they are unused (no more future or futures
     * returned a new value).
     */
-   Eina_Value (*error)(Eo *o, Eina_Error error);
+   Eina_Value (*error)(Eo *o, void *data, Eina_Error error);
    /**
     * Called on @b all situations to notify future destruction.
     *
@@ -431,7 +422,7 @@ typedef struct _Efl_Future_Cb_Desc {
     * @param o The object used to create the link in efl_future_cb_from_desc() or efl_future_chain_array().
     * @param dead_future The future that's been freed.
     */
-   void (*free)(Eo *o, const Eina_Future *dead_future);
+   void (*free)(Eo *o, void *data, const Eina_Future *dead_future);
    /**
     * If provided, then @c success will only be called if the value type matches the given pointer.
     *
@@ -439,6 +430,13 @@ typedef struct _Efl_Future_Cb_Desc {
     * then it will be propagated to the next future in the chain.
     */
    const Eina_Value_Type *success_type;
+   /**
+    * Context data given to every callback.
+    *
+    * This must be freed @b only by @c free callback as it's called from every case,
+    * otherwise it may lead to memory leaks.
+    */
+   const void *data;
    /**
     * This is used by Eo to cancel pending futures in case
     * an Eo object is deleted. It can be @c NULL.
@@ -476,7 +474,7 @@ typedef struct _Efl_Future_Cb_Desc {
  * }
  *
  * static Eina_Value
- * _file_ok(Eo *o EINA_UNUSED, const Eina_Value value)
+ * _file_ok(Eo *o EINA_UNUSED, void *data EINA_UNUSED, const Eina_Value value)
  * {
  *    const char *data;
  *    //There's no need to check the value type since EO infra already has done so.
@@ -487,7 +485,7 @@ typedef struct _Efl_Future_Cb_Desc {
  * }
  *
  * static Eina_Value
- * _file_err(Eo *o EINA_UNUSED, Eina_Error error)
+ * _file_err(Eo *o EINA_UNUSED, void *data EINA_UNUSED, Eina_Error error)
  * {
  *    //In case the downloader is deleted before the future is resolved, the future will be canceled thus this callback will be called.
  *    fprintf(stderr, "Could not download the file. Reason: %s\n", eina_error_msg_get(error));
@@ -495,7 +493,7 @@ typedef struct _Efl_Future_Cb_Desc {
  * }
  *
  * static void
- * _downlader_free(Eo *o, const Eina_Future *dead_future EINA_UNUSED)
+ * _downlader_free(Eo *o, void *data EINA_UNUSED, const Eina_Future *dead_future EINA_UNUSED)
  * {
  *    Ecore_Timer *t = efl_key_data_get(o, "timer");
  *    //The download finished before the timer expired. Cancel it...
@@ -515,7 +513,7 @@ typedef struct _Efl_Future_Cb_Desc {
  *   //Usually this would be done with an eina_future_race() of the download promise and a timeout promise,
  *   //however the following example is useful to illustrate efl_key_data_set() usage.
  *   efl_key_data_set(downloader, "timer", timer);
- *   eina_future_then_from_desc(f, efl_future_cb(.success = _file_ok, .error = _file_err, .success_type = EINA_VALUE_TYPE_STRING, .free = downloader_free));
+ *   efl_future_then(downloader, f, .success = _file_ok, .error = _file_err, .success_type = EINA_VALUE_TYPE_STRING, .free = downloader_free);
  * }
  * @endcode
  *
@@ -912,20 +910,32 @@ EAPI Eina_Bool efl_object_override(Eo *obj, const Efl_Object_Ops *ops);
  * @brief Check if an object "is a" klass.
  * @param obj The object to check
  * @param klass The klass to check against.
- * @return @c EINA_TRUE if obj implements klass, @c EINA_FALSE otherwise.
+ * @return @c EINA_TRUE if obj implements klass or is an Efl_Class which inherits
+ * from/implements klass, @c EINA_FALSE otherwise.
  *
  * Notice: This function does not support composite objects.
+ * Note: that an Efl_Class is also an Efl_Object, so if you pass an Efl_Class
+ * as obj, it will check if that class contain klass.
  */
 EAPI Eina_Bool efl_isa(const Eo *obj, const Efl_Class *klass);
 
 /**
  * @brief Gets the name of the passed class.
- * @param klass the class to work on.
+ * @param[in] klass The class (or object) to work on.
  * @return The class' name.
  *
  * @see efl_class_get()
  */
 EAPI const char *efl_class_name_get(const Efl_Class *klass);
+
+/**
+ * @brief Gets the amount of memory this class object would use.
+ * @param[in] klass The class (or object) to work on.
+ * @return The amount of memory in Bytes.
+ *
+ * @see efl_class_get()
+ */
+EAPI size_t efl_class_memory_size_get(const Efl_Class *klass);
 
 /**
  * @brief Gets a debug name for this object
@@ -1980,22 +1990,6 @@ typedef void (*efl_key_data_free_func)(void *);
 EAPI const Efl_Event_Description *efl_object_legacy_only_event_description_get(const char *_event_name);
 
 /**
- * @def EFL_CALLBACK_PRIORITY_BEFORE
- * Slightly more prioritized than default.
- */
-#define EFL_CALLBACK_PRIORITY_BEFORE -100
-/**
- * @def EFL_CALLBACK_PRIORITY_DEFAULT
- * Default callback priority level
- */
-#define EFL_CALLBACK_PRIORITY_DEFAULT 0
-/**
- * @def EFL_CALLBACK_PRIORITY_AFTER
- * Slightly less prioritized than default.
- */
-#define EFL_CALLBACK_PRIORITY_AFTER 100
-
-/**
  * Helper for sorting callbacks array. Automatically used by
  * @ref EFL_CALLBACKS_ARRAY_DEFINE
  */
@@ -2026,7 +2020,7 @@ EAPI int efl_callbacks_cmp(const Efl_Callback_Array_Item *a, const Efl_Callback_
 /**
  * @def efl_event_callback_add(obj, desc, cb, data)
  * Add a callback for an event.
- * @param[in] desc The description of the event to listen to.
+ * @param[in] desc An #Efl_Event_Description of the event to listen to.
  * @param[in] cb the callback to call.
  * @param[in] data additional data to pass to the callback.
  *
@@ -2042,6 +2036,7 @@ EAPI int efl_callbacks_cmp(const Efl_Callback_Array_Item *a, const Efl_Callback_
  * @def efl_event_callback_array_add(obj, desc, cb, data)
  * Add an array of callbacks for an event.
  *
+ * @param[in] obj The object.
  * @param[in] array an #Efl_Callback_Array_Item of events to listen to.
  * @param[in] data additional data to pass to the callback.
  *
@@ -2055,6 +2050,19 @@ EAPI int efl_callbacks_cmp(const Efl_Callback_Array_Item *a, const Efl_Callback_
 #define efl_event_callback_array_add(obj, array, data) \
    efl_event_callback_array_priority_add(obj, array, \
          EFL_CALLBACK_PRIORITY_DEFAULT, data)
+
+
+/**
+ * @def efl_event_callback_forwarder_add(obj, desc, new_obj)
+ * @brief Add an event callback forwarder for an event and an object.
+ *
+ * @param[in] obj The object.
+ * @param[in] desc An #Efl_Event_Description of the event to forward to.
+ * @param[in] new_obj The object to emit events from
+ *
+ * @ingroup Efl_Object
+ */
+#define efl_event_callback_forwarder_add(obj, desc, new_obj) efl_event_callback_forwarder_priority_add(obj, desc, EFL_CALLBACK_PRIORITY_DEFAULT, new_obj)
 
 /**
  * @def Replace the previous Eo pointer with new content.

@@ -44,14 +44,7 @@ _efl_model_item_efl_object_constructor(Eo *obj, Efl_Model_Item_Data *sd)
 static void
 _efl_model_item_efl_object_destructor(Eo *obj, Efl_Model_Item_Data *sd)
 {
-   Efl_Model *child;
-
-   EINA_LIST_FREE(sd->childrens, child)
-     {
-        if (child)
-          efl_parent_set(child, NULL);
-     }
-
+   eina_list_free(sd->childrens);
    eina_hash_foreach(sd->properties, _stringshared_keys_free, NULL);
    eina_hash_free(sd->properties);
 
@@ -104,7 +97,7 @@ _efl_model_item_efl_model_property_set(Eo *obj, Efl_Model_Item_Data *pd, const c
 
    eina_array_free(evt.changed_properties);
 
-   return eina_future_resolved(efl_loop_future_scheduler_get(obj),
+   return efl_loop_future_resolved(obj,
                                eina_value_reference_copy(value));
 
  hash_failed:
@@ -112,7 +105,7 @@ _efl_model_item_efl_model_property_set(Eo *obj, Efl_Model_Item_Data *pd, const c
  value_failed:
    eina_stringshare_del(prop);
 
-   return eina_future_rejected(efl_loop_future_scheduler_get(obj),
+   return efl_loop_future_rejected(obj,
                                ENOMEM);
 }
 
@@ -140,7 +133,7 @@ _efl_model_item_efl_model_children_slice_get(Eo *obj, Efl_Model_Item_Data *pd, u
    Eina_Value v;
 
    v = efl_model_list_value_get(pd->childrens, start, count);
-   return eina_future_resolved(efl_loop_future_scheduler_get(obj), v);
+   return efl_loop_future_resolved(obj, v);
 }
 
 static unsigned int

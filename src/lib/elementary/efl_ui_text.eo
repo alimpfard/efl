@@ -1,9 +1,9 @@
 /* FIXME - Text object must stop using elm_general! */
 import elm_general;
 
-class Efl.Ui.Text (Efl.Ui.Layout, Efl.Ui.Clickable,
+class Efl.Ui.Text extends Efl.Ui.Layout implements Efl.Ui.Clickable,
                  Efl.Access.Text, Efl.Access.Editable.Text, Efl.File,
-                 Efl.Ui.Selectable, Efl.Text_Interactive)
+                 Efl.Ui.Selectable, Efl.Text_Interactive
 {
    [[Efl UI text class]]
    methods {
@@ -59,7 +59,7 @@ class Efl.Ui.Text (Efl.Ui.Layout, Efl.Ui.Clickable,
          }
       }
       @property cnp_mode {
-         /* FIXME: Efl.Selection_Format does not allow markup without images! */
+         /* FIXME: Efl.Ui.Selection_Format does not allow markup without images! */
          set {
             [[Control pasting of text and images for the widget.
 
@@ -78,7 +78,7 @@ class Efl.Ui.Text (Efl.Ui.Layout, Efl.Ui.Clickable,
             ]]
          }
          values {
-            format: Efl.Selection_Format; [[Format for copy & paste.]]
+            format: Efl.Ui.Selection_Format; [[Format for copy & paste.]]
          }
       }
       @property input_panel_language {
@@ -364,6 +364,7 @@ class Efl.Ui.Text (Efl.Ui.Layout, Efl.Ui.Clickable,
       Efl.Access.Editable.Text.paste;
       Efl.File.file { get; set; }
       Efl.Text_Interactive.editable { set; }
+      Efl.Part.part_get;
    }
    events {
       changed: void; [[Called when entry changes]]
@@ -383,5 +384,8 @@ class Efl.Ui.Text (Efl.Ui.Layout, Efl.Ui.Clickable,
       anchor,out: Elm.Entry_Anchor_Info; [[Called on anchor out]]
       anchor,up: Elm.Entry_Anchor_Info; [[called on anchor up]]
       cursor,changed,manual: void; [[Called on manual cursor change]]
+   }
+   composite {
+      Efl.Text_Interactive;
    }
 }

@@ -8,4 +8,5 @@ configure_file(
   input: 'eo_debug.in',
   output: 'eo_debug',
   configuration: eo_debug_config,
-  install_dir: dir_bin)
+  install_dir: dir_bin,
+  install_mode: 'rwxr-xr-x')

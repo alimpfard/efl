@@ -21,7 +21,6 @@ pub_legacy_eo_files = [
   'elm_calendar_item.eo',
   'elm_clock.eo',
   'elm_colorselector.eo',
-  'elm_combobox.eo',
   'elm_conformant.eo',
   'elm_ctxpopup.eo',
   'elm_dayselector.eo',
@@ -106,7 +105,6 @@ pub_legacy_eo_files = [
   'elm_table.eo',
   'elm_thumb.eo',
   'efl_ui_textpath_legacy.eo',
-  'efl_ui_list_view_precise_layouter.eo'
 ]
 
 pub_eo_file_target = []
@@ -120,7 +118,7 @@ foreach eo_file : pub_legacy_eo_files
     depfile : eo_file + '.d',
     install : true,
     install_dir : dir_package_include,
-    command : [eolian_gen, '-I', meson.current_source_dir(), eolian_include_directories,
+    command : eolian_gen + [ '-I', meson.current_source_dir(), eolian_include_directories,
                            '-o', 'h:' + join_paths(meson.current_build_dir(), eo_file + '.h'),
                            '-o', 'c:' + join_paths(meson.current_build_dir(), eo_file + '.c'),
                            '-o', 'l:' + join_paths(meson.current_build_dir(), eo_file + '.legacy.h'),
@@ -154,6 +152,7 @@ pub_eo_files = [
   'efl_ui_slider_interval.eo',
   'efl_ui_spin.eo',
   'efl_ui_spin_button.eo',
+  'efl_ui_panel.eo',
   'efl_ui_datepicker.eo',
   'efl_ui_timepicker.eo',
   'efl_ui_tags.eo',
@@ -183,7 +182,7 @@ pub_eo_files = [
   'efl_ui_text_factory_emoticons.eo',
   'efl_ui_text_factory_fallback.eo',
   'efl_ui_textpath.eo',
-  'efl_ui_translatable.eo',
+  'efl_ui_l10n.eo',
   'efl_ui_clock.eo',
   'efl_ui_cursor.eo',
   'efl_ui_image_factory.eo',
@@ -207,8 +206,6 @@ pub_eo_files = [
   'efl_ui_list_view.eo',
   'efl_ui_list_view_model.eo',
   'efl_ui_list_view_pan.eo',
-  'efl_ui_list_view_seg_array.eo',
-  'efl_ui_list_view_relayout.eo',
   'efl_ui_item.eo',
   'efl_ui_list_item.eo',
   'efl_ui_list_default_item_part_icon.eo',
@@ -245,7 +242,7 @@ pub_eo_files = [
   'efl_ui_theme.eo',
   'efl_config_global.eo',
   'elm_code_widget.eo',
-  'efl_selection.eo',
+  'efl_ui_selection.eo',
   'efl_ui_dnd.eo',
   'efl_ui_dnd_container.eo',
   'efl_ui_focus_manager_window_root.eo',
@@ -278,7 +275,9 @@ pub_eo_files = [
   'elm_view_list.eo',
   'elm_view_form.eo',
   'elm_web.eo',
-  'elm_widget_item.eo'
+  'elm_widget_item.eo',
+  'efl_ui_text_part.eo',
+  'efl_ui_caching_factory.eo',
 ]
 
 foreach eo_file : pub_eo_files
@@ -288,7 +287,7 @@ foreach eo_file : pub_eo_files
     depfile : eo_file + '.d',
     install : true,
     install_dir : dir_package_include,
-    command : [eolian_gen, '-I', meson.current_source_dir(), eolian_include_directories,
+    command : eolian_gen + [ '-I', meson.current_source_dir(), eolian_include_directories,
                            '-o', 'h:' + join_paths(meson.current_build_dir(), eo_file + '.h'),
                            '-o', 'c:' + join_paths(meson.current_build_dir(), eo_file + '.c'),
                            '-o', 'd:' + join_paths(meson.current_build_dir(), eo_file + '.d'),
@@ -299,7 +298,7 @@ foreach eo_file : pub_eo_files
     depfile : eo_file + '.legacy.d',
     install : true,
     install_dir : dir_package_include,
-    command : [eolian_gen, '-I', meson.current_source_dir(), eolian_include_directories,
+    command : eolian_gen + [ '-I', meson.current_source_dir(), eolian_include_directories,
                            '-o', 'l:' + join_paths(meson.current_build_dir(), eo_file + '.legacy.h'),
                            '-o', 'd:' + join_paths(meson.current_build_dir(), eo_file + '.legacy.d'),
                            '-gld', '@INPUT@'])
@@ -310,7 +309,7 @@ pub_eo_types_files = [
   'elm_general.eot',
   'efl_ui.eot',
   'efl_ui_list_view_types.eot',
-  'efl_selection_types.eot',
+  'efl_ui_selection_types.eot',
   'efl_ui_dnd_types.eot'
 ]
 
@@ -321,7 +320,7 @@ foreach eo_file : pub_eo_types_files
     depfile : eo_file + '.d',
     install : true,
     install_dir : dir_package_include,
-    command : [eolian_gen, '-I', meson.current_source_dir(), eolian_include_directories,
+    command : eolian_gen + [ '-I', meson.current_source_dir(), eolian_include_directories,
                            '-o', 'h:' + join_paths(meson.current_build_dir(), eo_file + '.h'),
                            '-o', 'd:' + join_paths(meson.current_build_dir(), eo_file + '.d'),
                            '-ghd', '@INPUT@'])
@@ -335,8 +334,10 @@ priv_eo_files = [
   'efl_ui_focus_parent_provider_standard.eo',
   'efl_ui_focus_parent_provider_gen.eo',
   'efl_ui_model_state.eo',
-  'efl_selection_manager.eo',
+  'efl_ui_selection_manager.eo',
   'efl_datetime_manager.eo',
+  'efl_ui_list_view_precise_layouter.eo',
+  'efl_ui_list_view_relayout.eo',
 ]
 
 priv_eo_file_target = []
@@ -345,7 +346,7 @@ foreach eo_file : priv_eo_files
     input : eo_file,
     output : [eo_file + '.h'],
     depfile : eo_file + '.d',
-    command : [eolian_gen, '-I', meson.current_source_dir(), eolian_include_directories,
+    command : eolian_gen + [ '-I', meson.current_source_dir(), eolian_include_directories,
                            '-o', 'h:' + join_paths(meson.current_build_dir(), eo_file + '.h'),
                            '-o', 'c:' + join_paths(meson.current_build_dir(), eo_file + '.c'),
                            '-o', 'd:' + join_paths(meson.current_build_dir(), eo_file + '.d'),
@@ -436,6 +437,7 @@ elementary_headers_unstable = [
   'elm_widget_spinner.h',
   'efl_ui_spin_private.h',
   'efl_ui_spin_button_private.h',
+  'efl_ui_panel_private.h',
   'efl_ui_datepicker_private.h',
   'efl_ui_timepicker_private.h',
   'efl_ui_tags_private.h',
@@ -805,6 +807,7 @@ elementary_src = [
   'efl_ui_slider_interval.c',
   'efl_ui_spin.c',
   'efl_ui_spin_button.c',
+  'efl_ui_panel.c',
   'efl_ui_datepicker.c',
   'efl_ui_timepicker.c',
   'efl_ui_tags.c',
@@ -883,9 +886,9 @@ elementary_src = [
   'efl_ui_scroller.c',
   'efl_ui_scroll_manager.c',
   'efl_ui_pan.c',
-  'efl_selection_manager.c',
-  'efl_selection_manager_private.h',
-  'efl_selection.c',
+  'efl_ui_selection_manager.c',
+  'efl_ui_selection_manager_private.h',
+  'efl_ui_selection.c',
   'efl_datetime_manager.c',
   'efl_ui_dnd.c',
   'elm_focus_legacy.c',
@@ -899,7 +902,8 @@ elementary_src = [
   'efl_ui_tab_pager.c',
   'efl_ui_tab_bar.c',
   'efl_ui_tab_page.c',
-  'efl_ui_widget_focus_manager.c'
+  'efl_ui_widget_focus_manager.c',
+  'efl_ui_caching_factory.c'
 ]
 
 elementary_deps = [emile, eo, efl, edje, ethumb, ethumb_client, emotion, ecore_imf, ecore_con, eldbus, efreet, efreet_mime, efreet_trash, eio, atspi, dl, intl]
@@ -910,10 +914,15 @@ elm_options = configuration_data()
 
 config_h.set_quoted('ELM_TOP_BUILD_DIR', meson.build_root())
 config_h.set_quoted('MODULES_PATH', join_paths(dir_lib, 'modules'))
-config_h.set_quoted('ELEMENTARY_BASE_DIR', '.elementary')
+config_h.set_quoted('ELEMENTARY_BASE_DIR', get_option('elementary-base-dir'))
 config_h.set_quoted('ICON_DIR', join_paths(dir_lib, 'icons'))
 
-elm_options.set('ELM_UNIX', '1')
+if sys_windows == false
+  elm_options.set('ELM_UNIX', '1')
+else
+  elm_options.set('DLL_EXPORT', '1')
+endif
+
 elm_options.set('ELM_ELOCATION', '1')
 elm_options.set('ELM_EFREET', '1')
 

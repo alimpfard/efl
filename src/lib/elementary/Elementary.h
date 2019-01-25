@@ -153,14 +153,16 @@ EAPI extern Elm_Version *elm_version;
 typedef Eo Efl_Ui_Focus_Manager;
 #define _EFL_UI_FOCUS_MANAGER_EO_CLASS_TYPE
 
+
 # include <efl_ui_focus_object.eo.h>
 # include <efl_ui_focus_manager.eo.h>
+EAPI void efl_ui_focus_relation_free(Efl_Ui_Focus_Relations *rel);
 # include <efl_ui_focus_manager_window_root.eo.h>
 # include <efl_ui_focus_manager_calc.eo.h>
 # include <efl_ui_focus_manager_sub.eo.h>
 # include <efl_ui_focus_manager_root_focus.eo.h>
 # include <efl_ui_focus_util.eo.h>
-# include <efl_ui_translatable.eo.h>
+# include <efl_ui_l10n.eo.h>
 # include <efl_ui_focus_composition.eo.h>
 # include <efl_ui_focus_layer.eo.h>
 # include <elm_interface_scrollable.h>
@@ -280,7 +282,7 @@ typedef Eo Efl_Ui_Focus_Manager;
 #include <elm_win.h>
 
 #ifdef EFL_EO_API_SUPPORT
-# include <efl_selection_types.eot.h>
+# include <efl_ui_selection_types.eot.h>
 # include <efl_ui_theme.eo.h>
 # include <efl_config_global.eo.h>
 # include <efl_ui_widget.eo.h>
@@ -323,6 +325,7 @@ typedef Eo Efl_Ui_Focus_Manager;
 # include <efl_ui_datepicker.eo.h>
 # include <efl_ui_timepicker.eo.h>
 # include <efl_ui_tags.eo.h>
+# include <efl_ui_panel.eo.h>
 # include <efl_ui_image_factory.eo.h>
 # include <efl_ui_slider.eo.h>
 # include <efl_ui_slider_interval.eo.h>
@@ -341,16 +344,16 @@ typedef Eo Efl_Ui_Focus_Manager;
 # include <efl_ui_grid.eo.h>
 # include <efl_ui_list_view_types.eot.h>
 # include <efl_ui_list_view_seg_array.h>
-# include <efl_ui_list_view_seg_array.eo.h>
 # include <efl_ui_list_view_model.eo.h>
 # include <efl_ui_list_view_relayout.eo.h>
 # include <efl_ui_list_view.eo.h>
 # include <efl_ui_list_view_pan.eo.h>
+# include <efl_ui_caching_factory.eo.h>
 # include <efl_ui_pan.eo.h>
 # include <efl_ui_scroll_manager.eo.h>
 # include <efl_ui_scroller.eo.h>
 # include <efl_ui_dnd_types.eot.h>
-# include <efl_selection.eo.h>
+# include <efl_ui_selection.eo.h>
 # include <efl_ui_dnd.eo.h>
 # include <efl_ui_dnd_container.eo.h>
 # include <efl_ui_navigation_bar.eo.h>

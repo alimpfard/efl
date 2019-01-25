@@ -2842,7 +2842,8 @@ _format_dup(Evas_Object *eo_obj, const Evas_Object_Textblock_Format *fmt)
         fmt2->gfx_filter = malloc(sizeof(*fmt2->gfx_filter));
         memcpy(fmt2->gfx_filter, fmt->gfx_filter, sizeof(*fmt->gfx_filter));
         fmt2->gfx_filter->name = eina_stringshare_ref(fmt->gfx_filter->name);
-        fmt2->gfx_filter->dc = ENFN->context_dup(ENC, fmt->gfx_filter->dc);
+        if (fmt->gfx_filter->dc)
+          fmt2->gfx_filter->dc = ENFN->context_dup(ENC, fmt->gfx_filter->dc);
      }
 
    return fmt2;
@@ -5564,7 +5565,7 @@ _layout_item_obstacle_get(Ctxt *c, Evas_Object_Textblock_Item *it);
 static int
 _layout_par(Ctxt *c)
 {
-   Evas_Object_Textblock_Item *it, *prev_it;
+   Evas_Object_Textblock_Item *it;
    Eina_List *i;
    int ret = 0;
    int wrap = -1;
@@ -5681,8 +5682,8 @@ _layout_par(Ctxt *c)
         int redo_item = 0;
         Evas_Textblock_Obstacle_Info *obs_info = NULL;
         Evas_Coord itw;
+        Evas_Object_Textblock_Item *prev_it = it;
 
-        prev_it = it;
         it = _ITEM(eina_list_data_get(i));
         /* Skip visually deleted items */
         if (it->visually_deleted ||
@@ -6786,6 +6787,8 @@ _relayout_if_needed(const Evas_Object *eo_obj, Efl_Canvas_Text_Data *o)
 {
    ASYNC_BLOCK;
    Evas_Object_Protected_Data *obj = efl_data_scope_get(eo_obj, EFL_CANVAS_OBJECT_CLASS);
+
+   if (obj->delete_me) return EINA_TRUE;
 
    /* XXX const */
    evas_object_textblock_coords_recalc((Evas_Object *)eo_obj, obj, obj->private_data);
@@ -14783,6 +14786,16 @@ evas_object_textblock_render_pre(Evas_Object *eo_obj,
    /* then when this is done the object needs to figure if it changed and */
    /* if so what and where and add the appropriate redraw textblocks */
 
+   /* if someone is clipping this obj - go calculate the clipper */
+   if (obj->cur->clipper)
+     {
+        if (obj->cur->cache.clip.dirty)
+          evas_object_clip_recalc(obj->cur->clipper);
+        obj->cur->clipper->func->render_pre(obj->cur->clipper->object,
+                                            obj->cur->clipper,
+                                            obj->cur->clipper->private_data);
+     }
+
    //evas_object_textblock_coords_recalc(eo_obj, obj, obj->private_data);
    if (!_relayout_if_needed(eo_obj, o))
      {
@@ -14812,15 +14825,6 @@ evas_object_textblock_render_pre(Evas_Object *eo_obj,
         is_v = evas_object_is_visible(eo_obj, obj);
         was_v = evas_object_was_visible(eo_obj, obj);
         goto done;
-     }
-   /* if someone is clipping this obj - go calculate the clipper */
-   if (obj->cur->clipper)
-     {
-        if (obj->cur->cache.clip.dirty)
-          evas_object_clip_recalc(obj->cur->clipper);
-        obj->cur->clipper->func->render_pre(obj->cur->clipper->object,
-                                            obj->cur->clipper,
-                                            obj->cur->clipper->private_data);
      }
    /* now figure what changed and add draw rects */
    /* if it just became visible or invisible */
@@ -14854,7 +14858,11 @@ evas_object_textblock_render_pre(Evas_Object *eo_obj,
    if ((obj->cur->color.r != obj->prev->color.r) ||
        (obj->cur->color.g != obj->prev->color.g) ||
        (obj->cur->color.b != obj->prev->color.b) ||
-       (obj->cur->color.a != obj->prev->color.a))
+       (obj->cur->color.a != obj->prev->color.a) ||
+       (obj->cur->cache.clip.r != obj->prev->cache.clip.r) ||
+       (obj->cur->cache.clip.g != obj->prev->cache.clip.g) ||
+       (obj->cur->cache.clip.b != obj->prev->cache.clip.b) ||
+       (obj->cur->cache.clip.a != obj->prev->cache.clip.a))
      {
         evas_object_render_pre_prev_cur_add(&obj->layer->evas->clip_changes,
                                             eo_obj, obj);

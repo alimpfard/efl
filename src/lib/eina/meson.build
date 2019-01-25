@@ -1,6 +1,10 @@
 eina_deps = [dl]
 eina_pub_deps = [thread_dep]
 
+if sys_windows == true
+   eina_pub_deps += [evil]
+endif
+
 public_sub_headers = [
 'eina_promise.h',
 'eina_safety_checks.h',
@@ -260,6 +264,9 @@ if get_option('systemd') == true
   systemd = dependency('libsystemd')
   eina_deps += systemd
   config_h.set('HAVE_SYSTEMD', '1')
+  if systemd.version().version_compare('>=209')
+    config_h.set('HAVE_SYSTEMD_LOGIN_209', '1')
+  endif
 else
   systemd = []
 endif
@@ -368,7 +375,7 @@ execinfo = cc.find_library('execinfo', required: false)
 
 eina_lib = library('eina', sources,
   include_directories : config_dir,
-  dependencies: [m, rt, dl, execinfo, iconv, eina_deps, thread_dep, eina_mem_pools],
+  dependencies: [m, rt, dl, execinfo, iconv, eina_deps, thread_dep, eina_mem_pools, evil],
   install: true,
   version : meson.project_version()
 )
@@ -393,6 +400,6 @@ automatic_pkgfile = false
 pkgconfig.generate(eina_lib,
   name : 'eina',
   subdirs : ['eina-'+version_major, 'efl-'+version_major, join_paths('eina-'+version_major, 'eina')],
-  version : version_major + '.' + version_minor,
+  version : version_major + '.' + version_minor + '.' + version_micro,
   libraries : eina_pub_deps,
 )

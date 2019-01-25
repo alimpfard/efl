@@ -1,14 +1,15 @@
 import efl_ui;
+import eina_types;
 
-struct Efl.Ui.Focus.Relations {
+struct @free(efl_ui_focus_relation_free) Efl.Ui.Focus.Relations {
     [[Structure holding the graph of relations between focussable objects.
 
       @since 1.20
     ]]
-    right : list<Efl.Ui.Focus.Object>; [[List of objects on the right side]]
-    left : list<Efl.Ui.Focus.Object>; [[[List of objects on the left side]]
-    top : list<Efl.Ui.Focus.Object>; [[[List of objects above]]
-    down : list<Efl.Ui.Focus.Object>; [[[List of objects below]]
+    right : list<Efl.Ui.Focus.Object> @owned; [[List of objects on the right side]]
+    left : list<Efl.Ui.Focus.Object> @owned; [[[List of objects on the left side]]
+    top : list<Efl.Ui.Focus.Object> @owned; [[[List of objects above]]
+    down : list<Efl.Ui.Focus.Object> @owned; [[[List of objects below]]
     next : Efl.Ui.Focus.Object; [[[Next object]]
     prev : Efl.Ui.Focus.Object; [[Previous object]]
     parent : Efl.Ui.Focus.Object; [[Parent object]]
@@ -90,6 +91,20 @@ interface Efl.Ui.Focus.Manager {
                    over the border objects.]]
             }
         }
+        @property viewport_elements {
+            [[The list of elements which are at the border of the viewport.
+
+              This means one of the relations right,left or down,up are not set.
+              This call flushes all changes. See @Efl.Ui.Focus.Manager.move
+            ]]
+            get {}
+            keys {
+                viewport : Eina.Rect;
+            }
+            values {
+              viewport_elements : iterator<Efl.Ui.Focus.Object>;
+            }
+        }
         @property root {
             [[Root node for all logical subtrees.
 
@@ -158,6 +173,18 @@ interface Efl.Ui.Focus.Manager {
              entry : Efl.Ui.Focus.Object; [[The object that caused this manager to be redirect]]
            }
         }
+        dirty_logic_freeze {
+          [[This disables the cache invalidation when a object is moved.
+
+            Even the object is moved, the focus manager will not recalculate its relations, this can be used when you know that the set of widgets in the focus manager is equally moved. so the relations between the widets in the set do not change.
+          ]]
+        }
+        dirty_logic_unfreeze {
+          [[This enables the cache invalidation when a object is moved.
+
+            This is the counter part to @.dirty_logic_freeze
+          ]]
+        }
     }
     events {
         redirect,changed : Efl.Ui.Focus.Manager; [[Emitted when the redirect
@@ -167,5 +194,6 @@ interface Efl.Ui.Focus.Manager {
             potential changes in border_elements you want to know about]]
         focus,changed : Efl.Ui.Focus.Object; [[Emitted if the manager has focused an
             object, the passed focus object is the last focused object]]
+        dirty_logic_freeze,changed : bool; [[Called when this focus manager is frozen or unfrozen, even_info beeing $true indicates that it is now frozen, $false indicates that it is unfrozen.]]
     }
 }

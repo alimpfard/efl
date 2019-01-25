@@ -27,8 +27,6 @@ _efl_canvas_vg_shape_fill_set(Eo *obj EINA_UNUSED,
 
    pd->fill = efl_ref(f);
    efl_unref(tmp);
-
-   _efl_canvas_vg_node_changed(obj);
 }
 
 static Efl_Canvas_Vg_Node *
@@ -46,8 +44,6 @@ _efl_canvas_vg_shape_stroke_fill_set(Eo *obj EINA_UNUSED,
 
    pd->stroke.fill = efl_ref(f);
    efl_unref(tmp);
-
-   _efl_canvas_vg_node_changed(obj);
 }
 
 static Efl_Canvas_Vg_Node *
@@ -66,8 +62,6 @@ _efl_canvas_vg_shape_stroke_marker_set(Eo *obj EINA_UNUSED,
 
    pd->stroke.marker = efl_ref(m);
    efl_unref(tmp);
-
-   _efl_canvas_vg_node_changed(obj);
 }
 
 static Efl_Canvas_Vg_Shape *
@@ -78,43 +72,45 @@ _efl_canvas_vg_shape_stroke_marker_get(const Eo *obj EINA_UNUSED,
 }
 
 static void
-_efl_canvas_vg_shape_render_pre(Eo *obj EINA_UNUSED,
-                         Eina_Matrix3 *parent,
-                         Ector_Surface *s,
-                         void *data,
-                         Efl_Canvas_Vg_Node_Data *nd)
+_efl_canvas_vg_shape_render_pre(Evas_Object_Protected_Data *vg_pd,
+                                Efl_VG *obj,
+                                Efl_Canvas_Vg_Node_Data *nd,
+                                Ector_Surface *surface,
+                                Eina_Matrix3 *ptransform,
+                                Ector_Buffer *mask,
+                                int mask_op,
+                                void *data)
 {
    Efl_Canvas_Vg_Shape_Data *pd = data;
-   Efl_Canvas_Vg_Node_Data *fill, *stroke_fill, *stroke_marker, *mask;
+   Efl_Canvas_Vg_Node_Data *fill, *stroke_fill, *stroke_marker;
 
    if (nd->flags == EFL_GFX_CHANGE_FLAG_NONE) return;
 
    nd->flags = EFL_GFX_CHANGE_FLAG_NONE;
 
-   EFL_CANVAS_VG_COMPUTE_MATRIX(current, parent, nd);
+   EFL_CANVAS_VG_COMPUTE_MATRIX(ctransform, ptransform, nd);
 
-   fill = _evas_vg_render_pre(pd->fill, s, current);
-   stroke_fill = _evas_vg_render_pre(pd->stroke.fill, s, current);
-   stroke_marker = _evas_vg_render_pre(pd->stroke.marker, s, current);
-   mask = _evas_vg_render_pre(nd->mask, s, current);
+   fill = _evas_vg_render_pre(vg_pd, pd->fill, surface, ctransform, mask, mask_op);
+   stroke_fill = _evas_vg_render_pre(vg_pd, pd->stroke.fill, surface, ctransform, mask, mask_op);
+   stroke_marker = _evas_vg_render_pre(vg_pd, pd->stroke.marker, surface, ctransform, mask, mask_op);
 
    if (!nd->renderer)
      {
         efl_domain_current_push(EFL_ID_DOMAIN_SHARED);
-        nd->renderer = ector_surface_renderer_factory_new(s, ECTOR_RENDERER_SHAPE_MIXIN);
+        nd->renderer = ector_surface_renderer_factory_new(surface, ECTOR_RENDERER_SHAPE_MIXIN);
         efl_domain_current_pop();
      }
-
-   ector_renderer_transformation_set(nd->renderer, current);
+   ector_renderer_transformation_set(nd->renderer, ctransform);
    ector_renderer_origin_set(nd->renderer, nd->x, nd->y);
    ector_renderer_color_set(nd->renderer, nd->r, nd->g, nd->b, nd->a);
    ector_renderer_visibility_set(nd->renderer, nd->visibility);
-   ector_renderer_mask_set(nd->renderer, mask ? mask->renderer : NULL);
    ector_renderer_shape_fill_set(nd->renderer, fill ? fill->renderer : NULL);
    ector_renderer_shape_stroke_fill_set(nd->renderer, stroke_fill ? stroke_fill->renderer : NULL);
    ector_renderer_shape_stroke_marker_set(nd->renderer, stroke_marker ? stroke_marker->renderer : NULL);
    efl_gfx_path_copy_from(nd->renderer, obj);
+   efl_gfx_path_commit(nd->renderer);
    ector_renderer_prepare(nd->renderer);
+   ector_renderer_mask_set(nd->renderer, mask, mask_op);
 }
 
 static Eo *
@@ -184,6 +180,12 @@ _efl_canvas_vg_shape_efl_gfx_path_interpolate(Eo *obj,
    return r;
 }
 
+EOLIAN static void
+_efl_canvas_vg_shape_efl_gfx_path_commit(Eo *obj,
+                                         Efl_Canvas_Vg_Shape_Data *pd EINA_UNUSED)
+{
+   efl_canvas_vg_node_change(obj);
+}
 
 EOLIAN static Efl_Canvas_Vg_Node *
 _efl_canvas_vg_shape_efl_duplicate_duplicate(const Eo *obj, Efl_Canvas_Vg_Shape_Data *pd)
@@ -194,6 +196,7 @@ _efl_canvas_vg_shape_efl_duplicate_duplicate(const Eo *obj, Efl_Canvas_Vg_Shape_
    node = efl_duplicate(efl_super(obj, MY_CLASS));
    sd = efl_data_scope_get(node, MY_CLASS);
 
+   //FIXME: These fill, markers couldn't allow node as parent...
    if (pd->fill)
      {
         sd->fill = efl_duplicate(pd->fill);
@@ -227,6 +230,7 @@ EAPI void
 evas_vg_shape_stroke_scale_set(Eo *obj, double s)
 {
    efl_gfx_shape_stroke_scale_set(obj, s);
+   efl_canvas_vg_node_change(obj);
 }
 
 EAPI void
@@ -239,6 +243,7 @@ EAPI void
 evas_vg_shape_stroke_color_set(Eo *obj, int r, int g, int b, int a)
 {
    efl_gfx_shape_stroke_color_set(obj, r, g, b, a);
+   efl_canvas_vg_node_change(obj);
 }
 
 EAPI double
@@ -251,6 +256,7 @@ EAPI void
 evas_vg_shape_stroke_width_set(Eo *obj, double w)
 {
    efl_gfx_shape_stroke_width_set(obj, w);
+   efl_canvas_vg_node_change(obj);
 }
 
 EAPI double
@@ -263,6 +269,7 @@ EAPI void
 evas_vg_shape_stroke_location_set(Eo *obj, double centered)
 {
    efl_gfx_shape_stroke_location_set(obj, centered);
+   efl_canvas_vg_node_change(obj);
 }
 
 EAPI void
@@ -275,6 +282,7 @@ EAPI void
 evas_vg_shape_stroke_dash_set(Eo *obj, const Efl_Gfx_Dash *dash, unsigned int length)
 {
    efl_gfx_shape_stroke_dash_set(obj, dash, length);
+   efl_canvas_vg_node_change(obj);
 }
 
 EAPI Efl_Gfx_Cap
@@ -287,6 +295,7 @@ EAPI void
 evas_vg_shape_stroke_cap_set(Eo *obj, Efl_Gfx_Cap c)
 {
    efl_gfx_shape_stroke_cap_set(obj, c);
+   efl_canvas_vg_node_change(obj);
 }
 
 EAPI Efl_Gfx_Join
@@ -299,12 +308,14 @@ EAPI void
 evas_vg_shape_stroke_join_set(Eo *obj, Efl_Gfx_Join j)
 {
    efl_gfx_shape_stroke_join_set(obj, j);
+   efl_canvas_vg_node_change(obj);
 }
 
 EAPI void
 evas_vg_shape_path_set(Eo *obj, const Efl_Gfx_Path_Command *op, const double *points)
 {
    efl_gfx_path_set(obj, op, points);
+   efl_canvas_vg_node_change(obj);
 }
 
 EAPI void
@@ -335,90 +346,106 @@ EAPI void
 evas_vg_shape_dup(Eo *obj, Eo *dup_from)
 {
    efl_gfx_path_copy_from(obj, dup_from);
+   efl_canvas_vg_node_change(obj);
 }
 
 EAPI void
 evas_vg_shape_reset(Eo *obj)
 {
    efl_gfx_path_reset(obj);
+   efl_canvas_vg_node_change(obj);
 }
 
 EAPI void
 evas_vg_shape_append_move_to(Eo *obj, double x, double y)
 {
    efl_gfx_path_append_move_to(obj, x, y);
+   efl_canvas_vg_node_change(obj);
 }
 
 EAPI void
 evas_vg_shape_append_line_to(Eo *obj, double x, double y)
 {
    efl_gfx_path_append_line_to(obj, x, y);
+   efl_canvas_vg_node_change(obj);
 }
 
 EAPI void
 evas_vg_shape_append_quadratic_to(Eo *obj, double x, double y, double ctrl_x, double ctrl_y)
 {
    efl_gfx_path_append_quadratic_to(obj, x, y, ctrl_x, ctrl_y);
+   efl_canvas_vg_node_change(obj);
 }
 
 EAPI void
 evas_vg_shape_append_squadratic_to(Eo *obj, double x, double y)
 {
    efl_gfx_path_append_squadratic_to(obj, x, y);
+   efl_canvas_vg_node_change(obj);
 }
 
 EAPI void
 evas_vg_shape_append_cubic_to(Eo *obj, double x, double y, double ctrl_x0, double ctrl_y0, double ctrl_x1, double ctrl_y1)
 {
    efl_gfx_path_append_cubic_to(obj, x, y, ctrl_x0, ctrl_y0, ctrl_x1, ctrl_y1);
+   efl_canvas_vg_node_change(obj);
 }
 
 EAPI void
 evas_vg_shape_append_scubic_to(Eo *obj, double x, double y, double ctrl_x, double ctrl_y)
 {
    efl_gfx_path_append_scubic_to(obj, x, y, ctrl_x, ctrl_y);
+   efl_canvas_vg_node_change(obj);
 }
 
 EAPI void
 evas_vg_shape_append_arc_to(Eo *obj, double x, double y, double rx, double ry, double angle, Eina_Bool large_arc, Eina_Bool sweep)
 {
    efl_gfx_path_append_arc_to(obj, x, y, rx, ry, angle, large_arc, sweep);
+   efl_canvas_vg_node_change(obj);
 }
 
 EAPI void
 evas_vg_shape_append_arc(Eo *obj, double x, double y, double w, double h, double start_angle, double sweep_length)
 {
    efl_gfx_path_append_arc(obj, x, y, w, h, start_angle, sweep_length);
+   efl_canvas_vg_node_change(obj);
 }
 
 EAPI void
 evas_vg_shape_append_close(Eo *obj)
 {
    efl_gfx_path_append_close(obj);
+   efl_canvas_vg_node_change(obj);
 }
 
 EAPI void
 evas_vg_shape_append_circle(Eo *obj, double x, double y, double radius)
 {
    efl_gfx_path_append_circle(obj, x, y, radius);
+   efl_canvas_vg_node_change(obj);
 }
 
 EAPI void
 evas_vg_shape_append_rect(Eo *obj, double x, double y, double w, double h, double rx, double ry)
 {
    efl_gfx_path_append_rect(obj, x, y, w, h, rx, ry);
+   efl_canvas_vg_node_change(obj);
 }
 
 EAPI void
 evas_vg_shape_append_svg_path(Eo *obj, const char *svg_path_data)
 {
    efl_gfx_path_append_svg_path(obj, svg_path_data);
+   efl_canvas_vg_node_change(obj);
 }
 
 EAPI Eina_Bool
 evas_vg_shape_interpolate(Eo *obj, const Eo *from, const Eo *to, double pos_map)
 {
-   return efl_gfx_path_interpolate(obj, from, to, pos_map);
+   Eina_Bool ret = efl_gfx_path_interpolate(obj, from, to, pos_map);
+   efl_canvas_vg_node_change(obj);
+   return ret;
 }
 
 EAPI Eina_Bool
@@ -427,13 +454,13 @@ evas_vg_shape_equal_commands(Eo *obj, const Eo *with)
    return efl_gfx_path_equal_commands(obj, with);
 }
 
-EAPI Efl_Canvas_Vg_Node*
+EAPI Efl_Canvas_Vg_Shape*
 evas_vg_shape_add(Efl_Canvas_Vg_Node *parent)
 {
    /* Warn it because the usage has been changed.
       We can remove this message after v1.21. */
-   if (!parent) CRI("Efl_VG Shape doesn't allow null parent!");
-   return efl_add(EFL_CANVAS_VG_SHAPE_CLASS, parent);
+   if (!parent) CRI("Efl_Canvas_Vg_Shape only allow Efl_Canvas_Vg_Node as the parent");
+   return efl_add(MY_CLASS, parent);
 }
 
 #include "efl_canvas_vg_shape.eo.c"

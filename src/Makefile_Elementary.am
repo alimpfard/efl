@@ -29,6 +29,7 @@ elm_public_eolian_files = \
 	lib/elementary/efl_ui_datepicker.eo \
 	lib/elementary/efl_ui_timepicker.eo \
 	lib/elementary/efl_ui_tags.eo \
+	lib/elementary/efl_ui_panel.eo \
 	lib/elementary/efl_ui_video.eo \
 	lib/elementary/efl_ui_win.eo \
 	lib/elementary/efl_ui_win_inlined.eo \
@@ -56,7 +57,7 @@ elm_public_eolian_files = \
 	lib/elementary/efl_ui_text_factory_fallback.eo \
 	lib/elementary/efl_ui_textpath.eo \
 	lib/elementary/efl_ui_textpath_legacy.eo \
-	lib/elementary/efl_ui_translatable.eo \
+	lib/elementary/efl_ui_l10n.eo \
 	lib/elementary/efl_ui_clock.eo \
 	lib/elementary/efl_ui_cursor.eo \
 	lib/elementary/efl_ui_image_factory.eo \
@@ -80,8 +81,6 @@ elm_public_eolian_files = \
 	lib/elementary/efl_ui_list_view.eo \
 	lib/elementary/efl_ui_list_view_model.eo \
 	lib/elementary/efl_ui_list_view_pan.eo \
-	lib/elementary/efl_ui_list_view_seg_array.eo \
-	lib/elementary/efl_ui_list_view_relayout.eo \
 	lib/elementary/efl_ui_item.eo \
 	lib/elementary/efl_ui_list_item.eo \
 	lib/elementary/efl_ui_list_default_item_part_icon.eo \
@@ -118,7 +117,7 @@ elm_public_eolian_files = \
 	lib/elementary/efl_ui_theme.eo \
 	lib/elementary/efl_config_global.eo \
 	lib/elementary/elm_code_widget.eo \
-	lib/elementary/efl_selection.eo \
+	lib/elementary/efl_ui_selection.eo \
 	lib/elementary/efl_ui_dnd.eo \
 	lib/elementary/efl_ui_dnd_container.eo \
 	lib/elementary/efl_ui_focus_manager_window_root.eo \
@@ -132,6 +131,8 @@ elm_public_eolian_files = \
 	lib/elementary/efl_ui_tab_page.eo \
 	lib/elementary/efl_ui_tab_page_part_tab.eo \
 	lib/elementary/efl_ui_widget_focus_manager.eo \
+	lib/elementary/efl_ui_text_part.eo \
+	lib/elementary/efl_ui_caching_factory.eo \
 	$(NULL)
 
 # More public files -- FIXME
@@ -170,8 +171,10 @@ elm_private_eolian_files = \
 	lib/elementary/efl_ui_model_state.eo \
 	tests/elementary/focus_test.eo \
 	tests/elementary/focus_test_sub_main.eo \
-	lib/elementary/efl_selection_manager.eo \
+	lib/elementary/efl_ui_selection_manager.eo \
 	lib/elementary/efl_datetime_manager.eo \
+	lib/elementary/efl_ui_list_view_relayout.eo \
+	lib/elementary/efl_ui_list_view_precise_layouter.eo \
 	$(NULL)
 
 # Legacy classes - not part of public EO API
@@ -198,7 +201,6 @@ elm_legacy_eolian_files = \
 	lib/elementary/elm_calendar_item.eo \
 	lib/elementary/elm_clock.eo \
 	lib/elementary/elm_colorselector.eo \
-	lib/elementary/elm_combobox.eo \
 	lib/elementary/elm_conformant.eo \
 	lib/elementary/elm_ctxpopup.eo \
 	lib/elementary/elm_dayselector.eo \
@@ -282,14 +284,13 @@ elm_legacy_eolian_files = \
 	lib/elementary/elm_slideshow_item.eo \
 	lib/elementary/elm_table.eo \
 	lib/elementary/elm_thumb.eo \
-	lib/elementary/efl_ui_list_view_precise_layouter.eo \
 	$(NULL)
 
 elm_eolian_type_files = \
 	lib/elementary/elm_general.eot \
 	lib/elementary/efl_ui.eot \
 	lib/elementary/efl_ui_list_view_types.eot \
-	lib/elementary/efl_selection_types.eot \
+	lib/elementary/efl_ui_selection_types.eot \
 	lib/elementary/efl_ui_dnd_types.eot
 
 elm_public_eolian_c = $(elm_public_eolian_files:%.eo=%.eo.c)
@@ -413,6 +414,7 @@ includesunstable_HEADERS = \
 	lib/elementary/efl_ui_datepicker_private.h \
 	lib/elementary/efl_ui_timepicker_private.h \
 	lib/elementary/efl_ui_tags_private.h \
+	lib/elementary/efl_ui_panel_private.h \
 	lib/elementary/elm_widget_table.h \
 	lib/elementary/elm_widget_thumb.h \
 	lib/elementary/elm_widget_toolbar.h \
@@ -786,6 +788,7 @@ lib_elementary_libelementary_la_SOURCES = \
 	lib/elementary/efl_ui_datepicker.c \
 	lib/elementary/efl_ui_timepicker.c \
 	lib/elementary/efl_ui_tags.c \
+	lib/elementary/efl_ui_panel.c \
 	lib/elementary/elm_slideshow.c \
 	lib/elementary/elm_spinner.c \
 	lib/elementary/elm_store.c \
@@ -861,9 +864,9 @@ lib_elementary_libelementary_la_SOURCES = \
 	lib/elementary/efl_ui_scroller.c \
 	lib/elementary/efl_ui_scroll_manager.c \
 	lib/elementary/efl_ui_pan.c \
-	lib/elementary/efl_selection_manager.c \
-	lib/elementary/efl_selection_manager_private.h \
-	lib/elementary/efl_selection.c \
+	lib/elementary/efl_ui_selection_manager.c \
+	lib/elementary/efl_ui_selection_manager_private.h \
+	lib/elementary/efl_ui_selection.c \
 	lib/elementary/efl_datetime_manager.c \
 	lib/elementary/efl_ui_dnd.c \
 	lib/elementary/elm_focus_legacy.c \
@@ -880,6 +883,7 @@ lib_elementary_libelementary_la_SOURCES = \
 	lib/elementary/efl_ui_tab_bar.c \
 	lib/elementary/efl_ui_tab_page.c \
 	lib/elementary/efl_ui_widget_focus_manager.c \
+	lib/elementary/efl_ui_caching_factory.c \
 	$(NULL)
 
 
@@ -1063,6 +1067,7 @@ bin/elementary/test_ui_spin_button.c \
 bin/elementary/test_ui_datepicker.c \
 bin/elementary/test_ui_timepicker.c \
 bin/elementary/test_ui_tags.c \
+bin/elementary/test_ui_panel.c \
 bin/elementary/test_slideshow.c \
 bin/elementary/test_spinner.c \
 bin/elementary/test_store.c \
@@ -1095,6 +1100,8 @@ bin/elementary/test_win_stack.c \
 bin/elementary/test_win_indicator.c \
 bin/elementary/test_gesture_framework.c \
 bin/elementary/test_ui_tab_pager.c \
+bin/elementary/test_ui_pager.c \
+bin/elementary/test_ui_pager_scroll.c \
 bin/elementary/test.h
 
 bin_elementary_elementary_test_LDADD = @USE_ELEMENTARY_LIBS@

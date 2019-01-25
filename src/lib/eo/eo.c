@@ -1150,6 +1150,31 @@ err_obj:
    return NULL;
 }
 
+EAPI size_t
+efl_class_memory_size_get(const Efl_Class *eo_id)
+{
+   const _Efl_Class *klass;
+
+   if (_eo_is_a_class(eo_id))
+     {
+        EO_CLASS_POINTER_GOTO(eo_id, _klass, err_klass);
+        klass = _klass;
+     }
+   else
+     {
+        EO_OBJ_POINTER_GOTO(eo_id, obj, err_obj);
+        klass = obj->klass;
+        EO_OBJ_DONE(eo_id);
+     }
+   return klass->obj_size;
+
+err_klass:
+   _EO_POINTER_ERR(eo_id, "Class (%p) is an invalid ref.", eo_id);
+err_obj:
+   return 0;
+}
+
+
 static void
 _vtable_init(Eo_Vtable *vtable, size_t size)
 {
@@ -1731,6 +1756,30 @@ efl_isa(const Eo *eo_id, const Efl_Class *klass_id)
    Eina_Bool isa = EINA_FALSE;
 
    if (EINA_UNLIKELY(!eo_id)) return EINA_FALSE;
+
+   // Case where we are looking if eo_id is a class that contain klass_id
+   if (EINA_UNLIKELY(_eo_is_a_class(eo_id)))
+     {
+        const _Efl_Class **kls_itr;
+
+        EO_CLASS_POINTER_GOTO(klass_id, klass, err_class);
+        EO_CLASS_POINTER_GOTO(eo_id, lookinto, err_class0);
+
+        if (lookinto == klass) return EINA_TRUE;
+
+        kls_itr = lookinto->mro;
+        if (!kls_itr) return EINA_FALSE;
+
+        while (*kls_itr)
+          {
+             if ((*kls_itr) == klass)
+               return EINA_TRUE;
+             kls_itr++;
+          }
+
+        return EINA_FALSE;
+     }
+
    domain = ((Eo_Id)eo_id >> SHIFT_DOMAIN) & MASK_DOMAIN;
    data = _eo_table_data_get();
    tdata = _eo_table_data_table_get(data, domain);
@@ -1794,6 +1843,10 @@ err_shared_class: EINA_COLD
    EO_OBJ_DONE(eo_id);
 err_shared_obj: EINA_COLD
    eina_lock_release(&(_eo_table_data_shared_data->obj_lock));
+   return EINA_FALSE;
+
+err_class0:
+   _EO_POINTER_ERR(eo_id, "Class (%p) is an invalid ref.", eo_id);
    return EINA_FALSE;
 
 err_class: EINA_COLD
@@ -1899,11 +1952,11 @@ efl_unref(const Eo *obj_id)
 
    _efl_ref(obj);
 
-   if (EINA_UNLIKELY((!obj->unref_compensate) &&
+   if (EINA_UNLIKELY((obj->noref_event) && (!obj->unref_compensate) &&
                      ((obj->user_refcount == 1 && !obj->parent) ||
                       (obj->user_refcount == 2 && obj->parent))))
      {
-        // We need to report efl_ref_count correctly during efl_noref, so fake it
+        // We need to report efl_ref_count correctly during EFL_EVENT_NOREF, so fake it
         // by adjusting efl_ref_count while inside efl_unref (This should avoid
         // infinite loop)
         obj->unref_compensate = EINA_TRUE;
@@ -1911,7 +1964,6 @@ efl_unref(const Eo *obj_id)
         // The noref event should happen before any object in the
         // tree get affected by the change in refcount.
         efl_event_callback_call((Eo *) obj_id, EFL_EVENT_NOREF, NULL);
-        efl_noref((Eo *) obj_id);
 
         obj->unref_compensate = EINA_FALSE;
      }

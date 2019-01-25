@@ -1240,6 +1240,7 @@ _evas_render_phase1_process(Phase1_Context *p1ctx)
 
         EINA_INLIST_FOREACH(lay->objects, obj)
           {
+             if (evas_object_is_on_plane(obj->object, obj)) continue;
              clean_them |= _evas_render_phase1_object_process
                 (p1ctx, obj, EINA_FALSE, EINA_FALSE, EINA_FALSE, 2);
           }
@@ -3136,6 +3137,74 @@ _evas_overlay_output_find(Efl_Canvas_Output *output,
    return EVAS_3STATE_INSIDE;
 }
 
+static void
+_evas_planes(Evas_Public_Data *evas)
+{
+   Evas_Active_Entry *ao;
+
+   /* check if individual image objects can be dropped into hardware planes */
+   if (ENFN->image_plane_assign)
+     EINA_INARRAY_FOREACH(&evas->active_objects, ao)
+       {
+          Evas_Object_Protected_Data *obj2;
+          Evas_Object *eo_obj2;
+          Efl_Canvas_Output *output;
+          Evas_3State state;
+          Eina_List *lo;
+
+          obj2 = ao->obj;
+          eo_obj2 = obj2->object;
+
+          if (!efl_isa(eo_obj2, EFL_CANVAS_IMAGE_INTERNAL_CLASS)) continue;
+
+          /* Find the output the object was in */
+          EINA_LIST_FOREACH(evas->outputs, lo, output)
+            {
+               if (!output->output) continue ;
+               if (!eina_list_data_find(output->planes, obj2)) continue;
+               _evas_object_image_plane_release(eo_obj2, obj2, output);
+               break;
+            }
+
+         if (evas_object_is_visible(eo_obj2, obj2))
+           EINA_LIST_FOREACH(evas->outputs, lo, output)
+            {
+               /* A video object can only be in one output at a time, check that first */
+               state = _evas_overlay_output_find(output, obj2);
+               if (state == EVAS_3STATE_OUTSIDE) continue;
+
+               if (!_evas_render_can_use_overlay(evas, eo_obj2, output))
+                 {
+                    /* This may free up things temporarily allocated by
+                     * _can_use_overlay() testing in the engine */
+                    _evas_object_image_plane_release(eo_obj2, obj2, output);
+                 } else break;
+            }
+          if (evas_object_plane_changed(eo_obj2, obj2))
+            {
+               /* Since we're lifting this object out of the scene graph
+                * (or putting it back), we need to force redraw of the space
+                * under it.
+                */
+               _evas_canvas_damage_rectangle_add(NULL, evas,
+                                                 obj2->cur->geometry.x,
+                                                 obj2->cur->geometry.y,
+                                                 obj2->cur->geometry.w,
+                                                 obj2->cur->geometry.h);
+
+               /* We also need to clean its previously drawn position
+                * but only if we're removing it */
+               if (evas_object_is_on_plane(eo_obj2, obj2))
+                 _evas_canvas_damage_rectangle_add(NULL, evas,
+                                                   obj2->prev->geometry.x,
+                                                   obj2->prev->geometry.y,
+                                                   obj2->prev->geometry.w,
+                                                   obj2->prev->geometry.h);
+
+            }
+       }
+}
+
 static Eina_Bool
 evas_render_updates_internal(Evas *eo_e,
                              unsigned char make_updates,
@@ -3155,7 +3224,6 @@ evas_render_updates_internal(Evas *eo_e,
    unsigned int i;
    Phase1_Context p1ctx;
    int redraw_all = 0;
-   Evas_Active_Entry *ao;
    Evas_Render_Mode render_mode = !do_async ?
      EVAS_RENDER_MODE_SYNC :
      EVAS_RENDER_MODE_ASYNC_INIT;
@@ -3188,6 +3256,8 @@ evas_render_updates_internal(Evas *eo_e,
 #endif
 
    evas_render_pre(eo_e, evas);
+
+   _evas_planes(e);
 
    eina_evlog("+render_calc", eo_e, 0.0, NULL);
    evas_call_smarts_calculate(eo_e);
@@ -3368,44 +3438,6 @@ evas_render_updates_internal(Evas *eo_e,
              else
                _evas_object_image_video_overlay_hide(eo_obj);
           }
-
-        /* check if individual image objects can be dropped into hardware planes */
-        if (ENFN->image_plane_assign)
-          EINA_INARRAY_FOREACH(&evas->active_objects, ao)
-            {
-               Evas_Object_Protected_Data *obj2;
-               Evas_Object *eo_obj2;
-               Efl_Canvas_Output *output;
-               Evas_3State state;
-               Eina_List *lo;
-
-               obj2 = ao->obj;
-               eo_obj2 = obj2->object;
-
-               if (!efl_isa(eo_obj2, EFL_CANVAS_IMAGE_INTERNAL_CLASS)) continue;
-
-               if (evas_object_image_video_surface_get(eo_obj2)) continue;
-
-               /* Find the output the object was in */
-               EINA_LIST_FOREACH(e->outputs, lo, output)
-                 {
-                    if (!output->output) continue ;
-                    if (!eina_list_data_find(output->planes, obj2)) continue ;
-                    _evas_object_image_plane_release(eo_obj2, obj2, output);
-                    break;
-                 }
-
-               /* A video object can only be in one output at a time, check that first */
-               state = _evas_overlay_output_find(out, obj2);
-               if (state == EVAS_3STATE_OUTSIDE) continue ;
-
-               if (!_evas_render_can_use_overlay(e, eo_obj2, out))
-                 {
-                    /* This may free up things temporarily allocated by
-                     * _can_use_overlay() testing in the engine */
-                    _evas_object_image_plane_release(eo_obj2, obj2, out);
-                 }
-            }
         eina_evlog("-render_phase7", eo_e, 0.0, NULL);
 
         /* phase 8. go thru each update rect and render objects in it*/
@@ -3550,8 +3582,8 @@ evas_render_updates_internal(Evas *eo_e,
                {
                   eina_evlog("+render_output_async_flush", eo_e, 0.0, NULL);
                   efl_ref(eo_e);
-                  e->rendering = EINA_TRUE;
-                  _rendering_evases = eina_list_append(_rendering_evases, e);
+                  _rendering_evases = eina_list_prepend(_rendering_evases, e);
+                  e->rendering = _rendering_evases;
                   _cb_always_call(eo_e, EVAS_CALLBACK_RENDER_FLUSH_PRE, NULL);
                   evas_thread_queue_flush((Evas_Thread_Command_Cb)evas_render_pipe_wakeup, e);
                   eina_evlog("-render_output_async_flush", eo_e, 0.0, NULL);
@@ -3824,8 +3856,8 @@ evas_render_wakeup(Evas *eo_e)
      }
 
    /* post rendering */
-   _rendering_evases = eina_list_remove(_rendering_evases, evas);
-   evas->rendering = EINA_FALSE;
+   _rendering_evases = eina_list_remove_list(_rendering_evases, evas->rendering);
+   evas->rendering = NULL;
 
    post.updated_area = ret_updates;
    _cb_always_call(eo_e, EVAS_CALLBACK_RENDER_POST, &post);

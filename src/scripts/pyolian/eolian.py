@@ -389,7 +389,6 @@ class Eolian_Unit(EolianBaseObject):
         c_tdecl = lib.eolian_unit_alias_by_name_get(self, _str_to_bytes(name))
         return Typedecl(c_tdecl) if c_tdecl else None
 
-
     @property
     def all_namespaces(self):
         # TODO find a better way to find namespaces (maybe inside eolian?)
@@ -530,7 +529,6 @@ class Namespace(object):
         deep = self._name.count('.') + 1
         return [ ns for ns in self._unit.all_namespaces
                  if ns.name.startswith(base) and ns.name.count('.') == deep ]
-        
 
     @property
     def classes(self):
@@ -698,9 +696,12 @@ class Class(Object):
     @cached_property
     def inherits_full(self):
         L = []
+
         def do_class_recursive(cls):
-            for other in cls.inherits:
-                if not other in L:
+            if cls.parent:
+                L.append(cls.parent)
+            for other in cls.extensions:
+                if other not in L:
                     L.append(other)
                 do_class_recursive(other)
 
@@ -710,17 +711,11 @@ class Class(Object):
     @cached_property
     def hierarchy(self):
         L = []
-        base = self.base_class
+        base = self.parent
         while base:
             L.append(base)
-            base = base.base_class
+            base = base.parent
         return L
-
-    @cached_property
-    def base_class(self):
-        inherits = list(self.inherits)
-        if len(inherits) > 0:
-            return inherits[0]
 
     @cached_property
     def ctor_enable(self):

@@ -1,3 +1,5 @@
+eolian_include_directories += ['-I', join_paths(meson.source_root(), 'src', 'lib')]
+
 pub_legacy_eo_files = [
   'efl_gfx_fill.eo',
   'efl_gfx_entity.eo',
@@ -22,7 +24,7 @@ foreach eo_file : pub_legacy_eo_files
     depfile : eo_file + '.d',
     install : true,
     install_dir : join_paths(dir_package_include, 'interfaces'),
-    command : [eolian_gen, '-I', meson.current_source_dir(), eolian_include_directories,
+    command : eolian_gen + [ '-I', meson.current_source_dir(), eolian_include_directories,
                            '-o', 'h:' + join_paths(meson.current_build_dir(), eo_file + '.h'),
                            '-o', 'c:' + join_paths(meson.current_build_dir(), eo_file + '.c'),
                            '-o', 'd:' + join_paths(meson.current_build_dir(), eo_file + '.d'),
@@ -33,7 +35,7 @@ foreach eo_file : pub_legacy_eo_files
     depfile : eo_file + '.legacy.d',
     install : true,
     install_dir : join_paths(dir_package_include, 'interfaces'),
-    command : [eolian_gen, '-I', meson.current_source_dir(), eolian_include_directories,
+    command : eolian_gen + [ '-I', meson.current_source_dir(), eolian_include_directories,
                            '-o', 'l:' + join_paths(meson.current_build_dir(), eo_file + '.legacy.h'),
                            '-o', 'd:' + join_paths(meson.current_build_dir(), eo_file + '.legacy.d'),
                            '-gld', '@INPUT@'])
@@ -79,10 +81,11 @@ pub_eo_files = [
   'efl_pack_layout.eo',
   'efl_pack_linear.eo',
   'efl_pack_table.eo',
-  'efl_ui_base.eo',
+  'efl_ui_i18n.eo',
   'efl_ui_direction.eo',
   'efl_ui_drag.eo',
-  'efl_ui_range.eo',
+  'efl_ui_range_display.eo',
+  'efl_ui_range_interactive.eo',
   'efl_ui_view.eo',
   'efl_ui_model_connect.eo',
   'efl_ui_factory.eo',
@@ -102,9 +105,8 @@ pub_eo_files = [
   'efl_gfx_color_class.eo',
   'efl_gfx_text_class.eo',
   'efl_gfx_size_class.eo',
+  'efl_cached_item.eo',
 ]
-
-eolian_include_directories += ['-I', join_paths(meson.source_root(), 'src', 'lib', 'evas', 'canvas')]
 
 foreach eo_file : pub_eo_files
   pub_eo_file_target += custom_target('eolian_gen_' + eo_file,
@@ -113,7 +115,7 @@ foreach eo_file : pub_eo_files
     depfile : eo_file + '.d',
     install : true,
     install_dir : join_paths(dir_package_include, 'interfaces'),
-    command : [eolian_gen, '-I', meson.current_source_dir(), eolian_include_directories,
+    command : eolian_gen + [ '-I', meson.current_source_dir(), eolian_include_directories,
                            '-o', 'h:' + join_paths(meson.current_build_dir(), eo_file + '.h'),
                            '-o', 'c:' + join_paths(meson.current_build_dir(), eo_file + '.c'),
                            '-o', 'd:' + join_paths(meson.current_build_dir(), eo_file + '.d'),
@@ -137,7 +139,7 @@ foreach eo_file : pub_eo_types_files
     depfile : eo_file + '.d',
     install : true,
     install_dir : join_paths(dir_package_include, 'interfaces'),
-    command : [eolian_gen, '-I', meson.current_source_dir(), eolian_include_directories,
+    command : eolian_gen + [ '-I', meson.current_source_dir(), eolian_include_directories,
                            '-o', 'h:' + join_paths(meson.current_build_dir(), eo_file + '.h'),
                            '-o', 'd:' + join_paths(meson.current_build_dir(), eo_file + '.d'),
                            '-ghd', '@INPUT@'])
@@ -155,7 +157,7 @@ pub_eo_types_files = []
 
 efl_src += files([
   'efl_interfaces_main.c',
-  'efl_model_common.c',
+  'efl_mvvm_common.c',
   'efl_gfx_path.c',
   'efl_gfx_shape.c',
   'efl_gfx_color.c',

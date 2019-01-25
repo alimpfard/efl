@@ -62,6 +62,7 @@ typedef struct _Evas_Layer                  Evas_Layer;
 typedef struct _Evas_Size                   Evas_Size;
 typedef struct _Evas_Aspect                 Evas_Aspect;
 typedef struct _Evas_Border                 Evas_Border;
+typedef struct _Evas_Bool_Pair              Evas_Bool_Pair;
 typedef struct _Evas_Double_Pair            Evas_Double_Pair;
 typedef struct _Evas_Size_Hints             Evas_Size_Hints;
 typedef struct _Evas_Data_Node              Evas_Data_Node;
@@ -889,12 +890,13 @@ struct _Evas_Public_Data
    Evas_Device   *default_mouse;
    Evas_Device   *default_keyboard;
 
+   Eina_List     *rendering;
+
    unsigned char  changed : 1;
    unsigned char  delete_me : 1;
    unsigned char  invalidate : 1;
    unsigned char  cleanup : 1;
    Eina_Bool      is_frozen : 1;
-   Eina_Bool      rendering : 1;
    Eina_Bool      inside_post_render : 1;
    Eina_Bool      devices_modified : 1;
 };
@@ -931,6 +933,11 @@ struct _Evas_Border
    Evas_Coord l, r, t, b;
 };
 
+struct _Evas_Bool_Pair
+{
+   Eina_Bool x, y;
+};
+
 struct _Evas_Double_Pair
 {
    double x, y;
@@ -943,6 +950,7 @@ struct _Evas_Size_Hints
    Evas_Aspect aspect;
    Evas_Double_Pair align, weight;
    Evas_Border padding;
+   Evas_Bool_Pair fill;
    Evas_Display_Mode dispmode;
 };
 
@@ -1185,7 +1193,6 @@ struct _Evas_Object_Protected_Data
       Eina_Bool                ctor : 1; // used legacy constructor
       Eina_Bool                visible_set : 1; // visibility manually set
       Eina_Bool                weight_set : 1; // weight manually set
-      Eina_Bool                align_set : 1; // align manually set
       Eina_Bool                finalized : 1; // object fully constructed
    } legacy;
 
@@ -1260,6 +1267,8 @@ struct _Evas_Object_Func
 // preparation - may include rendering content to buffer or loading data
 // from disk or uploading to texture etc.
    void (*render_prepare) (Evas_Object *obj, Evas_Object_Protected_Data *pd, Eina_Bool do_async);
+   int (*is_on_plane) (Evas_Object *obj, Evas_Object_Protected_Data *pd, void *type_private_data);
+   int (*plane_changed) (Evas_Object *obj, Evas_Object_Protected_Data *pd, void *type_private_data);
 };
 
 struct _Evas_Func
@@ -1482,9 +1491,9 @@ struct _Evas_Func
    void  (*ector_destroy)                (void *engine, Ector_Surface *surface);
    Ector_Buffer *(*ector_buffer_wrap)    (void *engine, Evas *e, void *engine_image);
    Ector_Buffer *(*ector_buffer_new)     (void *engine, Evas *e, int width, int height, Efl_Gfx_Colorspace cspace, Ector_Buffer_Flag flags);
-   void  (*ector_begin)                  (void *engine, void *output, void *context, void *surface, Ector_Surface *ector, int x, int y, Eina_Bool do_async);
-   void  (*ector_renderer_draw)          (void *engine, void *output, void *context, void *surface, Ector_Renderer *r, Eina_Array *clips, Eina_Bool do_async);
-   void  (*ector_end)                    (void *engine, void *output, void *context, void *surface, Ector_Surface *ector, Eina_Bool do_async);
+   void  (*ector_begin)                  (void *engine, void *output, void *context, Ector_Surface *ector, int x, int y, Eina_Bool clear, Eina_Bool do_async);
+   void  (*ector_renderer_draw)          (void *engine, void *output, void *context, Ector_Renderer *r, Eina_Array *clips, Eina_Bool do_async);
+   void  (*ector_end)                    (void *engine, void *output, void *context, Ector_Surface *ector, Eina_Bool do_async);
 
    void *(*ector_surface_create)         (void *engine, int w, int h, int *error);
    void  (*ector_surface_destroy)        (void *engine, void *surface);
@@ -1505,19 +1514,25 @@ struct _Evas_Image_Save_Func
 
 struct _Vg_File_Data
 {
+   Efl_VG            *root;
+   Evas_Vg_Load_Func *loader;
    Eina_Rectangle  view_box;
-   Efl_VG         *root;
-   Eina_Bool       preserve_aspect;
+   int ref;
+
+   Eina_Bool       static_viewbox: 1;
+   Eina_Bool       preserve_aspect : 1;    //Used in SVG
 };
 
 struct _Evas_Vg_Load_Func
 {
-   Vg_File_Data *(*file_data) (const char *file, const char *key, int *error);
+   Vg_File_Data *(*file_open) (const char *file, const char *key, int *error);
+   Eina_Bool (*file_close) (Vg_File_Data *vfd);
+   Eina_Bool (*file_data) (Vg_File_Data *vfd);
 };
 
 struct _Evas_Vg_Save_Func
 {
-   int (*vg_save) (Vg_File_Data *vg, const char *file, const char *key, int compress);
+   int (*file_save) (Vg_File_Data *vfd, const char *file, const char *key, int compress);
 };
 
 #ifdef __cplusplus
@@ -1881,9 +1896,11 @@ void efl_canvas_output_info_get(Evas_Public_Data *e, Efl_Canvas_Output *output);
 void evas_object_pixels_get_force(Evas_Object *eo_obj, Evas_Object_Protected_Data *obj);
 
 // Gesture Manager
+void *_efl_canvas_gesture_manager_private_data_get(Eo *obj);
 void _efl_canvas_gesture_manager_filter_event(Eo *gesture_manager, Eo *target, void *event);
-void _efl_canvas_gesture_manager_callback_del_hook(Eo *gesture_manager, Eo *target, const Efl_Event_Description *type);
-void _efl_canvas_gesture_manager_callback_add_hook(Eo *gesture_manager, Eo *target, const Efl_Event_Description *type);
+void _efl_canvas_gesture_manager_callback_del_hook(void *data, Eo *target, const Efl_Event_Description *type);
+void _efl_canvas_gesture_manager_callback_add_hook(void *data, Eo *target, const Efl_Event_Description *type);
+Eina_Bool _efl_canvas_gesture_manager_watches(const Efl_Event_Description *ev);
 
 //evas focus functions
 void evas_focus_init(void);

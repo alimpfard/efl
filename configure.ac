@@ -804,7 +804,7 @@ EFL_SELECT_WINDOWS_VERSION
 
 ### Checks for libraries
 
-EFL_ADD_LIBS([EVIL], [-lpsapi -lole32 -lws2_32 -lsecur32 -luuid])
+EFL_ADD_LIBS([EVIL], [-lpsapi -lole32 -lws2_32 -lsecur32 -luuid -lmsvcr100])
 
 ### Checks for header files
 
@@ -1349,6 +1349,17 @@ EFL_LIB_END_OPTIONAL([Eo_Js])
 #### End of Eo JS
 
 #### Efl C Sharp Bindings
+want_csharp_beta="no"
+AC_ARG_ENABLE([csharp-beta],
+  [AS_HELP_STRING([--enable-csharp-beta],[enable C Sharp bindings. @<:@default=disabled@:>@])],
+  [
+    if test "x${enableval}" = "xyes" ; then
+      want_csharp_beta="yes"
+    else
+      want_csharp_beta="no"
+    fi
+  ],
+  [want_csharp_beta="no"])
 
 want_csharp="no"
 AC_ARG_ENABLE([csharp-bindings],
@@ -1371,6 +1382,11 @@ AM_CONDITIONAL([HAVE_CSHARP], [test "x${want_csharp}" = "xyes"])
 AC_DEFINE_IF([HAVE_CSHARP], [test "x${want_csharp}" = "xyes"],
   [1], [Compiling bindings for C Sharp])
 AC_SUBST([want_csharp])
+
+AM_CONDITIONAL([HAVE_CSHARP_BETA], [test "x${want_csharp_beta}" = "xyes"])
+AC_DEFINE_IF([HAVE_CSHARP_BETA], [test "x${want_csharp_beta}" = "xyes"],
+  [1], [Compiling bindings for C Sharp with beta methods, properties and classes])
+AC_SUBST([want_csharp_beta])
 
 if test "x${have_windows}" = "xyes"; then
   eflmonodlldir="$prefix/bin"
@@ -3934,8 +3950,22 @@ EFL_INTERNAL_DEPEND_PKG([ELPUT], [eina])
 
 EFL_DEPEND_PKG([ELPUT], [LIBINPUT], [libinput >= 1.7.0 xkbcommon >= 0.3.0 libudev])
 
+AC_ARG_ENABLE([elogind],
+   [AS_HELP_STRING([--enable-elogind],[enable elogind support.@<:@default=disabled@:>@])],
+   [
+    if test "x${enableval}" = "xyes" ; then
+       want_elogind="yes"
+    else
+       want_elogind="no"
+    fi
+   ], [
+    want_elogind="no"
+   ])
+
 EFL_OPTIONAL_DEPEND_PKG([ELPUT], [${want_systemd}], [SYSTEMD], [libsystemd])
+EFL_OPTIONAL_DEPEND_PKG([ELPUT], [${want_elogind}], [ELOGIND], [libelogind])
 EFL_ADD_FEATURE([ELPUT], [systemd-logind], [${want_systemd}])
+EFL_ADD_FEATURE([ELPUT], [elogind], [${want_elogind}])
 
 EFL_ADD_LIBS([ELPUT], [-lm])
 

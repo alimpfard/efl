@@ -8,7 +8,6 @@ if host_machine.system() == 'darwin'
   add_languages('objc')
 endif
 
-
 clean_check = run_command('meson/clean_check.sh')
 if clean_check.returncode() == 0
   error('Meson build requires a clean source tree')
@@ -45,6 +44,17 @@ if host_machine.system() == 'darwin'
   bin_linker_args = ['-pagezero_size', '10000', '-image_base', '100000000']
 endif
 
+windows = ['windows', 'cygwin']
+#bsd for meson 0.46 and 0.47
+bsd = ['bsd', 'freebsd', 'dragonfly', 'netbsd']
+linux = ['linux']
+osx = ['darwin']
+
+sys_linux = linux.contains(host_machine.system())
+sys_bsd = bsd.contains(host_machine.system())
+sys_windows = windows.contains(host_machine.system())
+sys_osx = osx.contains(host_machine.system())
+
 module_files = []
 evas_loader_map = []
 
@@ -66,6 +76,24 @@ local_benchmark = join_paths('src', 'benchmarks')
 local_examples = join_paths('src', 'examples')
 local_scripts = join_paths('src', 'scripts')
 
+dev_cflags = []
+dev_cflags_try = [
+  '-fvisibility=hidden',
+  '-Wall',
+  '-Wunused-parameter',
+  '-Wsign-compare',
+  '-Wno-missing-field-initializers',
+]
+
+foreach cf: dev_cflags_try
+  if cc.has_argument(cf) == true
+    dev_cflags += cf
+  endif
+endforeach
+add_global_arguments(dev_cflags, language: 'c')
+add_global_arguments(dev_cflags, language: 'cpp')
+
+
 foreach lang : ['c', 'objc', 'cpp']
   add_global_arguments('-DHAVE_CONFIG_H=1', language: lang)
   add_global_arguments('-D_GNU_SOURCE=1', language: lang)
@@ -74,6 +102,26 @@ foreach lang : ['c', 'objc', 'cpp']
   add_global_arguments('-DNEED_RUN_IN_TREE=1', language: lang)
   add_global_arguments('-DEFL_BUILD=1', language: lang)
   add_global_arguments('-DELM_INTERNAL_API_ARGESFSDFEFC=1', language: lang)
+  if sys_windows == true
+    if (get_option('windows-version') == 'vista')
+      add_global_arguments('-DWINVER=0x060', language: lang)
+      add_global_arguments('-D_WIN32_WINNT=0x0600', language: lang)
+    elif (get_option('windows-version') == 'win7')
+      add_global_arguments('-DWINVER=0x0601', language: lang)
+      add_global_arguments('-D_WIN32_WINNT=0x0601', language: lang)
+    elif (get_option('windows-version') == 'win8')
+      add_global_arguments('-DWINVER=0x0602', language: lang)
+      add_global_arguments('-D_WIN32_WINNT=0x0602', language: lang)
+    elif (get_option('windows-version') == 'win81')
+      add_global_arguments('-DWINVER=0x0603', language: lang)
+      add_global_arguments('-D_WIN32_WINNT=0x0603', language: lang)
+    elif (get_option('windows-version') == 'win10')
+      add_global_arguments('-DWINVER=0x0A00', language: lang)
+      add_global_arguments('-D_WIN32_WINNT=0x0A00', language: lang)
+    else
+      error('Version of targetted Windows incorrect')
+    endif
+  endif
 endforeach
 
 config_h = configuration_data()
@@ -93,7 +141,6 @@ config_h.set_quoted('PACKAGE_SRC_DIR', meson.source_root())
 config_h.set_quoted('PACKAGE_BUILD_DIR', meson.current_build_dir())
 config_h.set_quoted('PACKAGE_SYSCONF_DIR', dir_sysconf)
 config_h.set_quoted('BINDIR', dir_bin)
-config_h.set_quoted('DATADIR', dir_data)
 config_h.set10('EFL_HAVE_THREADS', true)
 config_h.set10('SLOPPY_SPEC', true)
 
@@ -142,7 +189,7 @@ if get_option('native-arch-optimization')
     message('ARM64 build - NEON + intrinsics enabled')
   elif host_machine.cpu_family() == 'ppc' or host_machine.cpu_family() == 'ppc64'
     config_h.set10('BUILD_ALTIVEC', true)
-    add_global_arguments('-maltivec-vectorize', language: 'c')
+    add_global_arguments('-ftree-vectorize', language: 'c')
     add_global_arguments('-maltivec', language: 'c')
     message('PPC/POWER build - ALTIVEC enabled')
   endif
@@ -150,17 +197,6 @@ endif
 
 config_dir = [include_directories('.')]
 eolian_include_directories = []
-
-windows = ['windows', 'cygwin']
-#bsd for meson 0.46 and 0.47
-bsd = ['bsd', 'freebsd', 'dragonfly', 'netbsd']
-linux = ['linux']
-osx = ['darwin']
-
-sys_linux = linux.contains(host_machine.system())
-sys_bsd = bsd.contains(host_machine.system())
-sys_windows = windows.contains(host_machine.system())
-sys_osx = osx.contains(host_machine.system())
 
 if sys_linux == true or sys_bsd == true
   sys_lib_extension = 'so'
@@ -192,6 +228,10 @@ config_h.set_quoted('MOD_SUFFIX', '.'+sys_mod_extension)
 config_h.set_quoted('EXE_SUFFIX', '.'+sys_exe_extension)
 config_h.set('EFL_BUILD', '1')
 
+if get_option('tslib') == true
+  config_h.set('HAVE_TSLIB', '1')
+endif
+
 subdir('header_checks')
 subdir('po')
 
@@ -203,6 +243,7 @@ ecore_evas_wayland_engine_include_dir = []
 
 subprojects = [
 # name              |   option              | mod  | lib  | bin  | bench | tests | examples | pkg-config options | name of static libs
+['evil'             ,[]                    , false,  true, false, false, false, false, [], []],
 ['eina'             ,[]                    , false,  true,  true,  true,  true,  true, [], []],
 ['eolian'           ,[]                    , false,  true,  true, false,  true, false, ['eina'], []],
 ['eo'               ,[]                    , false,  true, false,  true,  true, false, ['eina'], []],
@@ -244,7 +285,7 @@ subprojects = [
 ['ethumb'           ,[]                    ,  true,  true,  true, false, false, false, ['eina', 'efl', 'eo'], []],
 ['ethumb_client'    ,[]                    , false,  true,  true, false, false,  true, ['eina', 'efl', 'eo', 'ethumb'], []],
 ['elocation'        ,[]                    , false,  true, false, false, false, false, ['ecore', 'eldbus'], []],
-['elementary'       ,[]                    ,  true,  true,  true, false,  true, false, ['eina', 'efl', 'eo', 'eet', 'evas', 'ecore', 'ecore-evas', 'ecore-file', 'ecore-input', 'edje', 'ethumb-client', 'emotion', 'ecore-imf', 'ecore-con', 'eldbus', 'efreet', 'efreet-mime', 'efreet-trash', 'eio', 'elocation'], ['atspi']],
+['elementary'       ,[]                    ,  true,  true,  true,  true,  true, false, ['eina', 'efl', 'eo', 'eet', 'evas', 'ecore', 'ecore-evas', 'ecore-file', 'ecore-input', 'edje', 'ethumb-client', 'emotion', 'ecore-imf', 'ecore-con', 'eldbus', 'efreet', 'efreet-mime', 'efreet-trash', 'eio', 'elocation'], ['atspi']],
 ['efl_wl'           ,['wl']                , false,  true,  true, false, false, false, ['evas', 'ecore'], []],
 ['elua'             ,['elua']              , false,  true,  true, false,  true, false, ['eina', 'luajit'], []],
 ['ecore_wayland'    ,['wl-deprecated']     , false,  true, false, false, false, false, ['eina'], []],
@@ -367,13 +408,12 @@ subdir(join_paths('src', 'bin', 'efl'))
 
 subdir(join_paths('src', 'generic', 'evas'))
 subdir(join_paths('src', 'generic', 'emotion'))
+subdir('cmakeconfig')
 
-bindings = ['luajit', 'cxx', 'mono']
+bindings = get_option('bindings')
 
 foreach binding : bindings
-  if get_option(binding)
-    subdir(join_paths('src', 'bindings', binding))
-  endif
+  subdir(join_paths('src', 'bindings', binding))
 endforeach
 
 subdir(join_paths('src', 'edje_external'))

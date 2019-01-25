@@ -1781,6 +1781,8 @@ _elm_color_item_efl_object_constructor(Eo *eo_item, Elm_Color_Item_Data *item)
    evas_object_size_hint_align_set(VIEW(item), EVAS_HINT_FILL, EVAS_HINT_FILL);
    evas_object_event_callback_add
      (VIEW(item), EVAS_CALLBACK_RESIZE, _item_resize, NULL);
+   _efl_ui_focus_event_redirector(VIEW(item), obj);
+
 
    item->color_obj = edje_object_add(evas_object_evas_get(obj));
    elm_widget_theme_object_set
@@ -1889,7 +1891,6 @@ _palette_box_prepare(Eo *o)
 {
    efl_ui_direction_set(o, EFL_UI_DIR_HORIZONTAL);
    efl_gfx_size_hint_weight_set(o, EVAS_HINT_EXPAND, EVAS_HINT_EXPAND);
-   efl_gfx_size_hint_align_set(o, EVAS_HINT_FILL, EVAS_HINT_FILL);
    efl_gfx_entity_visible_set(o, EINA_FALSE);
 }
 
@@ -1908,6 +1909,7 @@ _create_colorpalette(Evas_Object *obj)
    if (elm_widget_is_legacy(obj))
      {
         sd->palette_box = elm_legacy_add(EFL_UI_BOX_FLOW_CLASS, obj);
+        evas_object_size_hint_align_set(sd->palette_box, EVAS_HINT_FILL, EVAS_HINT_FILL);
      }
    else
      {
@@ -2731,7 +2733,7 @@ _elm_color_item_efl_ui_focus_object_focus_parent_get(const Eo *obj EINA_UNUSED, 
 }
 
 EOLIAN static Efl_Ui_Focus_Manager*
-_elm_color_item_efl_ui_focus_object_focus_manager_get(const Eo *obj, Elm_Color_Item_Data *pd)
+_elm_color_item_efl_ui_focus_object_focus_manager_get(const Eo *obj EINA_UNUSED, Elm_Color_Item_Data *pd)
 {
    return efl_ui_focus_object_focus_manager_get(WIDGET(pd));
 }

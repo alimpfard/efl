@@ -120,9 +120,6 @@ _ecore_evas_animator(void *data, const Efl_Event *ev EINA_UNUSED)
    Ecore_Evas *ee = data;
 
    ee->animator_ticked = EINA_TRUE;
-
-   efl_event_callback_del(ee->evas, EFL_EVENT_ANIMATOR_TICK, _ecore_evas_animator, ee);
-   ee->animator_registered = EINA_FALSE;
 }
 
 static Eina_Bool
@@ -308,6 +305,11 @@ _ecore_evas_idle_enter(void *data EINA_UNUSED)
         if (ee->engine.func->fn_evas_changed)
           ee->engine.func->fn_evas_changed(ee, change);
 
+        if (!change)
+          {
+             efl_event_callback_del(ee->evas, EFL_EVENT_ANIMATOR_TICK, _ecore_evas_animator, ee);
+             ee->animator_registered = EINA_FALSE;
+          }
 #ifdef ECORE_EVAS_ASYNC_RENDER_DEBUG
         if ((ee->in_async_render) && (ee->async_render_start <= 0.0))
           {
@@ -2791,6 +2793,10 @@ EAPI void
 ecore_evas_shadow_geometry_set(Ecore_Evas *ee, int l, int r, int t, int b)
 {
    ECORE_EVAS_CHECK(ee);
+   EINA_SAFETY_ON_TRUE_RETURN(l < 0);
+   EINA_SAFETY_ON_TRUE_RETURN(r < 0);
+   EINA_SAFETY_ON_TRUE_RETURN(t < 0);
+   EINA_SAFETY_ON_TRUE_RETURN(b < 0);
    if ((ee->shadow.l == l) && (ee->shadow.r == r) &&
        (ee->shadow.t == t) && (ee->shadow.b == b)) return;
    ee->shadow.l = l;
@@ -3284,7 +3290,10 @@ _ticking_start(Ecore_Evas *ee)
     {
        // Backend doesn't support per window vsync, fallback to generic support
        if (ee->animator_count++ > 0) return;
-       ee->anim = ecore_animator_add(_ecore_evas_animator_fallback, ee);
+       if (!ee->anim)
+         {
+            ee->anim = ecore_animator_add(_ecore_evas_animator_fallback, ee);
+         }
     }
 }
 
@@ -3304,8 +3313,11 @@ _ticking_stop(Ecore_Evas *ee)
      {
         // Backend doesn't support per window vsync, fallback to generic support
         if (--ee->animator_count > 0) return;
-        ecore_animator_del(ee->anim);
-        ee->anim = NULL;
+        if (ee->anim)
+          {
+             ecore_animator_del(ee->anim);
+             ee->anim = NULL;
+          }
      }
 }
 
@@ -5160,14 +5172,14 @@ EAPI void
 _ecore_evas_mouse_inout_set(Ecore_Evas *ee, Efl_Input_Device *mouse,
                             Eina_Bool in, Eina_Bool force_out)
 {
-   Efl_Input_Device *present;
+   Eina_List *present;
 
    if (!mouse)
      mouse = evas_default_device_get(ee->evas,
                                      EFL_INPUT_DEVICE_TYPE_MOUSE);;
 
    EINA_SAFETY_ON_NULL_RETURN(mouse);
-   present = eina_list_data_find(ee->mice_in, mouse);
+   present = eina_list_data_find_list(ee->mice_in, mouse);
 
    if (in)
      {
@@ -5179,7 +5191,7 @@ _ecore_evas_mouse_inout_set(Ecore_Evas *ee, Efl_Input_Device *mouse,
      }
    else
      {
-        if (present) ee->mice_in = eina_list_remove(ee->mice_in, mouse);
+        if (present) ee->mice_in = eina_list_remove_list(ee->mice_in, present);
         else if (!present && !force_out) return;
         efl_event_callback_del(mouse, EFL_EVENT_DEL,
                                _ecore_evas_mouse_del_cb, ee);

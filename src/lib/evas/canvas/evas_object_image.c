@@ -54,6 +54,8 @@ static void         evas_object_image_render_prepare(Evas_Object *obj, Evas_Obje
 
 static void         evas_object_image_filled_resize_listener(void *data, Evas *eo_e, Evas_Object *eo_obj, void *einfo);
 
+static int          evas_object_image_is_on_plane(Evas_Object *obj EINA_UNUSED, Evas_Object_Protected_Data *pd EINA_UNUSED, void *type_private_data);
+static int          evas_object_image_plane_changed(Evas_Object *obj EINA_UNUSED, Evas_Object_Protected_Data *pd EINA_UNUSED, void *type_private_data);
 static const Evas_Object_Func object_func =
 {
    /* methods (compulsory) */
@@ -73,7 +75,9 @@ static const Evas_Object_Func object_func =
    evas_object_image_has_opaque_rect,
    evas_object_image_get_opaque_rect,
    evas_object_image_can_map,
-   evas_object_image_render_prepare   // render_prepare
+   evas_object_image_render_prepare,   // render_prepare
+   evas_object_image_is_on_plane,
+   evas_object_image_plane_changed
 };
 
 static const Evas_Object_Image_Load_Opts default_load_opts = {
@@ -1741,6 +1745,29 @@ _evas_object_image_can_use_plane(Evas_Object_Protected_Data *obj,
 
    output->planes = eina_list_append(output->planes, obj);
    return EINA_TRUE;
+}
+
+static int
+evas_object_image_is_on_plane(Evas_Object *obj EINA_UNUSED, Evas_Object_Protected_Data *pd EINA_UNUSED, void *type_private_data)
+{
+   Evas_Image_Data *o = type_private_data;
+
+   if (o->plane) return 1;
+   return 0;
+}
+
+static int
+evas_object_image_plane_changed(Evas_Object *obj EINA_UNUSED, Evas_Object_Protected_Data *pd EINA_UNUSED, void *type_private_data)
+{
+   Evas_Image_Data *o = type_private_data;
+
+   if (!!o->plane != o->plane_status)
+     {
+        o->plane_status = !!o->plane;
+        return 1;
+     }
+
+   return 0;
 }
 
 static void

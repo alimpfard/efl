@@ -7,7 +7,7 @@
 #define EFL_ACCESS_SELECTION_PROTECTED
 #define EFL_ACCESS_WIDGET_ACTION_PROTECTED
 #define ELM_WIDGET_ITEM_PROTECTED
-#define EFL_UI_TRANSLATABLE_PROTECTED
+#define EFL_UI_L10N_PROTECTED
 #define EFL_UI_FOCUS_OBJECT_PROTECTED
 
 #include <Elementary.h>
@@ -1682,14 +1682,14 @@ _elm_toolbar_item_elm_widget_item_part_content_unset(Eo *eo_item EINA_UNUSED, El
 }
 
 EOLIAN static void
-_elm_toolbar_efl_ui_translatable_translation_update(Eo *obj EINA_UNUSED, Elm_Toolbar_Data *sd)
+_elm_toolbar_efl_ui_l10n_translation_update(Eo *obj EINA_UNUSED, Elm_Toolbar_Data *sd)
 {
    Elm_Toolbar_Item_Data *it;
 
    EINA_INLIST_FOREACH(sd->items, it)
      elm_wdg_item_translate(EO_OBJ(it));
 
-   efl_ui_translatable_translation_update(efl_super(obj, MY_CLASS));
+   efl_ui_l10n_translation_update(efl_super(obj, MY_CLASS));
 }
 
 static void
@@ -2413,6 +2413,7 @@ _item_new(Evas_Object *obj,
    WIDGET_ITEM_DATA_SET(EO_OBJ(it), data);
 
    VIEW_SET(it, elm_layout_add(obj));
+   _efl_ui_focus_event_redirector(VIEW(it), eo_it);
    elm_widget_tree_unfocusable_set(VIEW(it), EINA_TRUE);
    evas_object_data_set(VIEW(it), "item", it);
    efl_access_object_access_type_set(VIEW(it), EFL_ACCESS_TYPE_DISABLED);
@@ -4068,6 +4069,12 @@ _elm_toolbar_efl_ui_focus_composition_prepare(Eo *obj, Elm_Toolbar_Data *pd)
      }
 
    efl_ui_focus_composition_elements_set(obj, order);
+}
+
+EOLIAN static Efl_Ui_Focus_Object*
+_elm_toolbar_item_efl_ui_focus_object_focus_parent_get(const Eo *obj EINA_UNUSED, Elm_Toolbar_Item_Data *pd)
+{
+   return WIDGET(pd);
 }
 
 

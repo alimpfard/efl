@@ -62,19 +62,6 @@ EAPI int efl_loop_exit_code_process(Eina_Value *value);
  */
 EAPI Eina_Future_Scheduler *efl_loop_future_scheduler_get(const Eo *obj);
 
-/**
- * @brief Create a promise attached to the current loop
- *
- * @param[in] An object which will provide a loop, either by being a loop or a loop consumer
- * @param cancel_cb A callback used to inform that the promise was canceled. Use
- * this callback to @c free @p data. @p cancel_cb must not be @c NULL !
- * @param data Data to @p cancel_cb.
- * @return A promise or @c NULL on error.
- *
- * @see eina_promise_new()
- */
-EAPI Eina_Promise *efl_loop_promise_new(const Eo *obj, Eina_Promise_Cancel_Cb cancel_cb, const void *data);
-
 #include "efl_loop_fd.eo.h"
 #include "efl_loop_handler.eo.h"
 
@@ -89,7 +76,6 @@ EAPI Eina_Promise *efl_loop_promise_new(const Eo *obj, Eina_Promise_Cancel_Cb ca
 
 /* We ue the factory pattern here, so you shouldn't call eo_add directly. */
 EAPI Eo *efl_main_loop_get(void);
-EAPI Eo *efl_app_get(void);
 
 /**
  * @}
@@ -132,6 +118,7 @@ EAPI Eo *efl_app_get(void);
 #include "efl_model_composite_boolean_children.eo.h"
 #include "efl_model_composite_selection.eo.h"
 #include "efl_model_composite_selection_children.eo.h"
+#include "efl_model_view.eo.h"
 
 /**
  * @}
